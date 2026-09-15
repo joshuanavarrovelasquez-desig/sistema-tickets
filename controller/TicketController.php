@@ -1,8 +1,8 @@
 <?php
 // Requerimos los modelos que el controlador va a utilizar
-require_once '../model/Incidente.php';
-require_once '../model/Requerimiento.php';
-require_once '../model/GestorDeTickets.php';
+require_once __DIR__ . '/../model/Incidente.php';
+require_once __DIR__ . '/../model/Requerimiento.php';
+require_once __DIR__ . '/../model/GestorDeTickets.php';
 
 // Nombramos la clase en UpperCamelCase
 class TicketController {

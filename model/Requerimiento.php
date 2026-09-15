@@ -1,5 +1,5 @@
 <?php
-require_once 'Ticket.php';
+require_once __DIR__ . '/Ticket.php';
 
 // HERENCIA
 class Requerimiento extends Ticket {

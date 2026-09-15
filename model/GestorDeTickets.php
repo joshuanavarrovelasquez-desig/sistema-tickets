@@ -1,5 +1,5 @@
 <?php
-require_once '../config/ConexionBaseDeDatos.php';
+require_once __DIR__ . '/../config/ConexionBaseDeDatos.php';
 
 class GestorDeTickets {
     
