@@ -21,7 +21,7 @@ class GestorDeTickets {
             
             // Extraemos los datos del objeto usando sus métodos
             $sentencia->execute([
-                $nuevoTicket->usuarioSolicitante, // En PHP 8, si es protected, a veces requiere un getter, pero asumiremos visibilidad de paquete si no, crea un getUsuario()
+                $nuevoTicket->getUsuarioSolicitante(), // En PHP 8, si es protected, a veces requiere un getter, pero asumiremos visibilidad de paquete si no, crea un getUsuario()
                 $nuevoTicket->getEstadoActual(),
                 $tipoTicket,
                 $nuevoTicket->calcularTiempoResolucion() // Ejecutará el método polimórfico correspondiente

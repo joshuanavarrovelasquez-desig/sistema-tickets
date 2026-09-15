@@ -41,7 +41,7 @@ class TicketController {
                 
                 if ($guardadoExitoso) {
                     // Si todo salió bien, redirigimos al usuario a la vista de la tabla
-                    header("Location: ../views/listar_tickets.php?mensaje=exito");
+                    header("Location: /sistema_tickets/views/listar_tickets.php?mensaje=exito");
                     exit();
                 } else {
                     echo "Hubo un error de comunicación con XAMPP.";

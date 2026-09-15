@@ -21,5 +21,9 @@ abstract class Ticket {
 
     // Método abstracto que obligará al polimorfismo más adelante
     abstract public function calcularTiempoResolucion(): string;
+    // Método controlado para leer el usuario protegido
+    public function getUsuarioSolicitante(): string {
+        return $this->usuarioSolicitante;
+    }
 }
 ?>
