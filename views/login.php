@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Mesa de Ayuda TI</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-box { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); width: 100%; max-width: 350px; }
+        input, button { width: 100%; padding: 10px; margin-top: 10px; box-sizing: border-box; }
+        button { background-color: #0056b3; color: white; border: none; cursor: pointer; margin-top: 20px; font-weight: bold; }
+        button:hover { background-color: #004494; }
+        .error { background: #f8d7da; color: #721c24; padding: 10px; border-radius: 5px; text-align: center; margin-bottom: 15px; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <h2 style="text-align: center; margin-top: 0;">Mesa de Ayuda TI</h2>
+        <p style="text-align: center; color: #666;">Ingresa a tu cuenta</p>
+        
+        <?php if(isset($_GET['error'])): ?>
+            <div class="error">Correo o contraseña incorrectos.</div>
+        <?php endif; ?>
+
+        <!-- La acción va hacia el router principal (index.php) -->
+        <form action="../index.php?accion=login" method="POST">
+            <label>Correo Electrónico:</label>
+            <input type="email" name="correo" value="prueba@sistema.com" required>
+            
+            <label>Contraseña:</label>
+            <input type="password" name="password" value="123456" required>
+            
+            <button type="submit">Iniciar Sesión</button>
+        </form>
+    </div>
+</body>
+</html>

@@ -1,17 +1,36 @@
 <?php
-// Requerimos el controlador para poder usarlo
+session_start();
+
+// Requerimos ambos controladores
 require_once 'controller/TicketController.php';
+require_once 'controller/UsuarioController.php';
 
-// Capturamos la 'accion' de la URL. Si el usuario recién entra, por defecto es 'inicio'
-$accion = $_GET['accion'] ?? 'inicio';
+// Si nadie envía una acción, mandamos al usuario a la pantalla de Login por defecto
+$accion = $_GET['accion'] ?? 'vista_login'; 
 
-if ($accion === 'crear') {
-    // Si la acción es crear, instanciamos el Controlador y ejecutamos el método POST
+if ($accion === 'vista_login') {
+    header("Location: views/login.php");
+    exit();
+
+} elseif ($accion === 'login') {
+    $controlador = new UsuarioController();
+    $controlador->procesarLogin();
+
+} elseif ($accion === 'logout') {
+    $controlador = new UsuarioController();
+    $controlador->cerrarSesion();
+
+} elseif ($accion === 'crear') {
+    if (!isset($_SESSION['id_usuario'])) {
+        header("Location: views/login.php");
+        exit();
+    }
     $controlador = new TicketController();
     $controlador->registrarNuevoTicket();
-} else {
-    // Si alguien entra a localhost/sistema_tickets/ lo redirigimos automáticamente a la vista
-    header("Location: views/crear_ticket.php");
-    exit();
+
+} elseif ($accion === 'actualizar_estado') {
+    // AQUÍ ESTÁ LA RUTA QUE SOLUCIONA LA PANTALLA BLANCA
+    $controlador = new TicketController();
+    $controlador->actualizarEstado();
 }
 ?>

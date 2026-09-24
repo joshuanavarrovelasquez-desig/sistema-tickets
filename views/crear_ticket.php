@@ -17,8 +17,7 @@
         <!-- El formulario envía los datos hacia el index.php en la raíz -->
         <form action="../index.php?accion=crear" method="POST">
             
-            <label for="usuario">Usuario Solicitante:</label>
-            <input type="text" name="usuario" id="usuario" placeholder="Ej. Juan Pérez" required>
+            <!-- ELIMINADO: El input de "Usuario Solicitante". Ahora se captura internamente vía sesión -->
 
             <label for="tipo">Clasificación ITIL:</label>
             <select name="tipo" id="tipo">
