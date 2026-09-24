@@ -5,11 +5,14 @@ abstract class Ticket {
     
     // ENCAPSULAMIENTO: Propiedades en lowerCamelCase
     protected int $idTicket;
-    protected string $usuarioSolicitante;
+    
+    // CAMBIO 1: Reemplazamos $usuarioSolicitante por $idUsuario
+    protected int $idUsuario; 
     private string $estadoActual;
 
-    public function __construct(string $usuarioSolicitante) {
-        $this->usuarioSolicitante = $usuarioSolicitante;
+    // CAMBIO 2: El constructor ahora recibe un número entero (int)
+    public function __construct(int $idUsuario) {
+        $this->idUsuario = $idUsuario;
         // Todo ticket nuevo nace con estado "Abierto"
         $this->estadoActual = "Abierto"; 
     }
@@ -19,11 +22,12 @@ abstract class Ticket {
         return $this->estadoActual;
     }
 
+    // CAMBIO 3: Actualizamos el Getter (Antes era getUsuarioSolicitante)
+    public function getIdUsuario(): int {
+        return $this->idUsuario;
+    }
+
     // Método abstracto que obligará al polimorfismo más adelante
     abstract public function calcularTiempoResolucion(): string;
-    // Método controlado para leer el usuario protegido
-    public function getUsuarioSolicitante(): string {
-        return $this->usuarioSolicitante;
-    }
 }
 ?>
