@@ -1,23 +1,19 @@
 <?php
 require_once __DIR__ . '/Ticket.php';
 
-// HERENCIA
 class Requerimiento extends Ticket {
-    
     private bool $requiereAprobacion;
 
-    // CAMBIO: Ahora recibe int $idUsuario en lugar de string $usuarioSolicitante
-    public function __construct(int $idUsuario, bool $requiereAprobacion) {
-        parent::__construct($idUsuario);
+    public function __construct(int $idUsuario, string $correo, string $asunto, string $descripcion, ?string $codigoBarras, ?string $archivoAdjunto, bool $requiereAprobacion) {
+        parent::__construct($idUsuario, $correo, $asunto, $descripcion, $codigoBarras, $archivoAdjunto);
         $this->requiereAprobacion = $requiereAprobacion;
     }
 
-    // POLIMORFISMO: El mismo método, pero con una respuesta totalmente diferente
     public function calcularTiempoResolucion(): string {
         if ($this->requiereAprobacion) {
-            return "5 días hábiles (Requiere visto bueno de gerencia)";
+            return '5 días hábiles (Requiere visto bueno de gerencia)';
         }
-        return "3 días hábiles";
+        return '3 días hábiles';
     }
 }
 ?>

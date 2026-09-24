@@ -1,33 +1,30 @@
 <?php
-
-// ABSTRACCIÓN: Plantilla general en UpperCamelCase
 abstract class Ticket {
-    
-    // ENCAPSULAMIENTO: Propiedades en lowerCamelCase
-    protected int $idTicket;
-    
-    // CAMBIO 1: Reemplazamos $usuarioSolicitante por $idUsuario
-    protected int $idUsuario; 
-    private string $estadoActual;
+    protected int $idUsuario;
+    protected string $correo;
+    protected string $asunto;
+    protected string $descripcion;
+    protected ?string $codigoBarras;
+    protected ?string $archivoAdjunto;
+    protected string $estadoActual = 'Abierto';
 
-    // CAMBIO 2: El constructor ahora recibe un número entero (int)
-    public function __construct(int $idUsuario) {
+    public function __construct(int $idUsuario, string $correo, string $asunto, string $descripcion, ?string $codigoBarras, ?string $archivoAdjunto) {
         $this->idUsuario = $idUsuario;
-        // Todo ticket nuevo nace con estado "Abierto"
-        $this->estadoActual = "Abierto"; 
+        $this->correo = $correo;
+        $this->asunto = $asunto;
+        $this->descripcion = $descripcion;
+        $this->codigoBarras = $codigoBarras;
+        $this->archivoAdjunto = $archivoAdjunto;
     }
 
-    // Método controlado para leer el dato privado
-    public function getEstadoActual(): string {
-        return $this->estadoActual;
-    }
+    public function getIdUsuario(): int { return $this->idUsuario; }
+    public function getCorreo(): string { return $this->correo; }
+    public function getAsunto(): string { return $this->asunto; }
+    public function getDescripcion(): string { return $this->descripcion; }
+    public function getCodigoBarras(): ?string { return $this->codigoBarras; }
+    public function getArchivoAdjunto(): ?string { return $this->archivoAdjunto; }
+    public function getEstadoActual(): string { return $this->estadoActual; }
 
-    // CAMBIO 3: Actualizamos el Getter (Antes era getUsuarioSolicitante)
-    public function getIdUsuario(): int {
-        return $this->idUsuario;
-    }
-
-    // Método abstracto que obligará al polimorfismo más adelante
     abstract public function calcularTiempoResolucion(): string;
 }
 ?>

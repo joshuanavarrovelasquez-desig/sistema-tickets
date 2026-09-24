@@ -1,51 +1,56 @@
 <?php
-// Eliminamos la simulación, pero aseguramos que la sesión esté iniciada
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Requerimos los modelos que el controlador va a utilizar
+require_once __DIR__ . '/../model/Ticket.php';
 require_once __DIR__ . '/../model/Incidente.php';
 require_once __DIR__ . '/../model/Requerimiento.php';
 require_once __DIR__ . '/../model/GestorDeTickets.php';
 
-// Nombramos la clase en UpperCamelCase
 class TicketController {
     
-    // Nombramos el método en lowerCamelCase
     public function registrarNuevoTicket(): void {
-        
-        // Verificamos si los datos llegaron a través del formulario (método POST)
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             
-            // 1. Recibir los datos de la vista y la sesión real
             $idUsuarioLogueado = $_SESSION['id_usuario'];
-            $tipoTicket = $_POST['tipo']; // Puede ser "Incidente" o "Requerimiento"
-            
-            // Este campo dinámico será la Urgencia (para incidentes) o la Aprobación (para requerimientos)
-            $detalleEspecifico = $_POST['detalle']; 
-            
-            $nuevoTicket = null;
+            $correo = $_POST['correo'] ?? '';
+            $tipoTicket = $_POST['tipo'] ?? 'Incidente';
+            $asunto = $_POST['asunto'] ?? '';
+            $descripcion = $_POST['descripcion'] ?? '';
+            $codigoBarras = !empty($_POST['codigo_barras']) ? $_POST['codigo_barras'] : null;
+            $detalleEspecifico = $_POST['detalle'] ?? '';
 
-            // 2. POLIMORFISMO Y ABSTRACCIÓN EN ACCIÓN
-            // Dependiendo de lo que eligió el usuario en la vista, instanciamos una clase distinta
-            if ($tipoTicket === 'Incidente') {
-                $nuevoTicket = new Incidente($idUsuarioLogueado, $detalleEspecifico);
-            } else if ($tipoTicket === 'Requerimiento') {
-                // Convertimos el string que viene del formulario a un valor booleano (true/false)
-                $requiereAprobacion = ($detalleEspecifico === 'Si') ? true : false;
-                $nuevoTicket = new Requerimiento($idUsuarioLogueado, $requiereAprobacion);
+            // GESTIÓN DE SUBIDA DE ARCHIVOS
+            $nombreArchivoAdjunto = null;
+            if (isset($_FILES['archivo']) && $_FILES['archivo']['error'] === UPLOAD_ERR_OK) {
+                $archivoTmp = $_FILES['archivo']['tmp_name'];
+                $nombreOriginal = basename($_FILES['archivo']['name']);
+                // Generamos un nombre único con timestamp para evitar colisiones
+                $nombreArchivoAdjunto = time() . "_" . preg_replace("/[^a-zA-Z0-9.\-_]/", "", $nombreOriginal);
+                $carpetaDestino = __DIR__ . '/../uploads/';
+                
+                if (!is_dir($carpetaDestino)) {
+                    mkdir($carpetaDestino, 0777, true);
+                }
+                
+                move_uploaded_file($archivoTmp, $carpetaDestino . $nombreArchivoAdjunto);
             }
 
-            // 3. Guardar en la base de datos
+            $nuevoTicket = null;
+
+            if ($tipoTicket === 'Incidente') {
+                $nuevoTicket = new Incidente($idUsuarioLogueado, $correo, $asunto, $descripcion, $codigoBarras, $nombreArchivoAdjunto, $detalleEspecifico);
+            } else if ($tipoTicket === 'Requerimiento') {
+                $requiereAprobacion = (strcasecmp($detalleEspecifico, 'Si') === 0);
+                $nuevoTicket = new Requerimiento($idUsuarioLogueado, $correo, $asunto, $descripcion, $codigoBarras, $nombreArchivoAdjunto, $requiereAprobacion);
+            }
+
             if ($nuevoTicket !== null) {
                 $gestor = new GestorDeTickets();
-                
-                // Le pasamos el OBJETO COMPLETO al gestor
                 $guardadoExitoso = $gestor->guardarTicket($nuevoTicket, $tipoTicket);
                 
                 if ($guardadoExitoso) {
-                    // Si todo salió bien, redirigimos al usuario a la vista de la tabla
                     header("Location: /sistema_tickets/views/listar_tickets.php?mensaje=exito");
                     exit();
                 } else {
@@ -55,7 +60,6 @@ class TicketController {
         }
     }
 
-    // ACTUALIZADO: Procesa el cambio de estado con manejo de errores
     public function actualizarEstado(): void {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $idTicket = (int)$_POST['id_ticket'];
@@ -65,7 +69,6 @@ class TicketController {
             $actualizacionExitosa = $gestor->actualizarEstadoTicket($idTicket, $nuevoEstado);
 
             if ($actualizacionExitosa) {
-                // Redirigimos usando rutas relativas seguras
                 if (isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin') {
                     header("Location: views/panel_admin.php?mensaje=actualizado");
                 } else {
@@ -73,12 +76,9 @@ class TicketController {
                 }
                 exit();
             } else {
-                // Si la BD falla, ya no te dará pantalla blanca, sino este mensaje:
                 echo "<h3 style='color:red;'>Error: No se pudo actualizar el ticket en la base de datos.</h3>";
                 echo "<a href='views/panel_admin.php'>Volver al panel</a>";
             }
-        } else {
-            echo "Error: El acceso debe ser a través del botón del formulario.";
         }
     }
 }
