@@ -6,8 +6,9 @@ class Requerimiento extends Ticket {
     
     private bool $requiereAprobacion;
 
-    public function __construct(string $usuarioSolicitante, bool $requiereAprobacion) {
-        parent::__construct($usuarioSolicitante);
+    // CAMBIO: Ahora recibe int $idUsuario en lugar de string $usuarioSolicitante
+    public function __construct(int $idUsuario, bool $requiereAprobacion) {
+        parent::__construct($idUsuario);
         $this->requiereAprobacion = $requiereAprobacion;
     }
 
