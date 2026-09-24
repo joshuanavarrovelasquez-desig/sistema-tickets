@@ -7,9 +7,10 @@ class Incidente extends Ticket {
     // Propiedad específica solo para incidentes
     private string $nivelImpacto; 
 
-    public function __construct(string $usuarioSolicitante, string $nivelImpacto) {
+    // CAMBIO: Ahora recibe int $idUsuario en lugar de string $usuarioSolicitante
+    public function __construct(int $idUsuario, string $nivelImpacto) {
         // Llamamos al constructor de la clase padre (Ticket)
-        parent::__construct($usuarioSolicitante);
+        parent::__construct($idUsuario);
         $this->nivelImpacto = $nivelImpacto;
     }
 
