@@ -42,7 +42,8 @@ class GestorDeTickets {
     }
 
     public function obtenerTodosLosTickets(): array {
-        $sql = "SELECT t.id, t.tipo, t.asunto, t.descripcion, t.codigo_barras, t.archivo_adjunto, t.estado, t.tiempo_resolucion, t.correo, u.nombre as nombre_usuario 
+        // Añadimos t.fecha_registro a la consulta
+        $sql = "SELECT t.id, t.tipo, t.asunto, t.descripcion, t.codigo_barras, t.archivo_adjunto, t.estado, t.tiempo_resolucion, t.correo, t.fecha_registro, u.nombre as nombre_usuario 
                 FROM tickets t 
                 JOIN usuarios u ON t.id_usuario = u.id_usuario 
                 ORDER BY t.id DESC";

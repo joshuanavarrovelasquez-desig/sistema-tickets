@@ -32,5 +32,20 @@ if ($accion === 'vista_login') {
     // AQUÍ ESTÁ LA RUTA QUE SOLUCIONA LA PANTALLA BLANCA
     $controlador = new TicketController();
     $controlador->actualizarEstado();
+} elseif ($accion === 'exportar_pdf') {
+    if (isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin') {
+        $controlador = new TicketController();
+        $controlador->exportarPDF();
+    } else {
+        header("Location: views/login.php");
+    }
+
+} elseif ($accion === 'exportar_excel') {
+    if (isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin') {
+        $controlador = new TicketController();
+        $controlador->exportarExcel();
+    } else {
+        header("Location: views/login.php");
+    }
 }
 ?>

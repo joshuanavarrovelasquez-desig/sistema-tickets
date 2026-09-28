@@ -28,7 +28,11 @@ require_once '../model/GestorDeTickets.php';
 <body>
     <div class="cabecera">
         <h2>Panel de Control - Administrador</h2>
-        <a href="../index.php?accion=logout" class="btn-rojo">Cerrar Sesión</a>
+        <div style="display: flex; gap: 10px;">
+            <a href="../index.php?accion=exportar_pdf" style="background: #17a2b8; color: white; padding: 8px 12px; text-decoration: none; border-radius: 5px;">📄 Exportar PDF</a>
+            <a href="../index.php?accion=exportar_excel" style="background: #28a745; color: white; padding: 8px 12px; text-decoration: none; border-radius: 5px;">📊 Exportar Excel</a>
+            <a href="../index.php?accion=logout" class="btn-rojo">Cerrar Sesión</a>
+        </div>
     </div>
     
     <?php if (isset($_GET['mensaje']) && $_GET['mensaje'] === 'actualizado'): ?>
@@ -39,6 +43,7 @@ require_once '../model/GestorDeTickets.php';
         <thead>
             <tr>
                 <th>ID</th>
+                <th>Fecha y Hora</th>
                 <th>Solicitante / Correo</th>
                 <th>Clasificación & Asunto</th>
                 <th>Descripción & Código</th>
@@ -56,7 +61,7 @@ require_once '../model/GestorDeTickets.php';
                 foreach ($todosLosTickets as $ticket) {
                     echo "<tr>";
                     echo "<td>#" . htmlspecialchars($ticket['id']) . "</td>";
-                    
+                    echo "<td>" . htmlspecialchars($ticket['fecha_registro']) . "</td>";
                     // Solicitante y correo
                     echo "<td><strong>" . htmlspecialchars($ticket['nombre_usuario']) . "</strong><br><small style='color:blue;'>" . htmlspecialchars($ticket['correo']) . "</small></td>";
                     
