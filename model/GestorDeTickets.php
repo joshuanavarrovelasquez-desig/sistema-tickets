@@ -41,7 +41,7 @@ class GestorDeTickets {
         return $sentencia->fetchAll(PDO::FETCH_ASSOC); 
     }
 
-    public function obtenerTodosLosTickets(): array {
+    public function obtenerTodosLosTickets(): array {//mysql pide y obtiene los datos crudos en un "array"
         // Añadimos t.fecha_registro a la consulta
         $sql = "SELECT t.id, t.tipo, t.asunto, t.descripcion, t.codigo_barras, t.archivo_adjunto, t.estado, t.tiempo_resolucion, t.correo, t.fecha_registro, u.nombre as nombre_usuario 
                 FROM tickets t 

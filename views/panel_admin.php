@@ -28,15 +28,52 @@ require_once '../model/GestorDeTickets.php';
 <body>
     <div class="cabecera">
         <h2>Panel de Control - Administrador</h2>
-        <div style="display: flex; gap: 10px;">
-            <a href="../index.php?accion=exportar_pdf" style="background: #17a2b8; color: white; padding: 8px 12px; text-decoration: none; border-radius: 5px;">📄 Exportar PDF</a>
-            <a href="../index.php?accion=exportar_excel" style="background: #28a745; color: white; padding: 8px 12px; text-decoration: none; border-radius: 5px;">📊 Exportar Excel</a>
-            <a href="../index.php?accion=logout" class="btn-rojo">Cerrar Sesión</a>
-        </div>
+        <a href="../index.php?accion=logout" class="btn-rojo">Cerrar Sesión</a>
     </div>
     
+    <!-- CUADRO DE FILTROS PARA EXPORTACIÓN (NUEVO) -->
+    <div style="background: white; padding: 20px; margin-top: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+        <h3 style="margin-top: 0;">Generar Reporte Personalizado</h3>
+        <form action="../index.php" method="GET" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+            <!-- Enviamos la acción exportar al index.php -->
+            <input type="hidden" name="accion" value="exportar">
+            
+            <div>
+                <label><strong>Usuario:</strong></label><br>
+                <input type="text" name="usuario" placeholder="Ej. Prueba" style="padding: 6px; width: 150px;">
+            </div>
+            <div>
+                <label><strong>Estado:</strong></label><br>
+                <select name="estado" style="padding: 6px; width: 120px;">
+                    <option value="">Todos</option>
+                    <option value="Abierto">Abierto</option>
+                    <option value="En proceso">En proceso</option>
+                    <option value="Finalizado">Finalizado</option>
+                </select>
+            </div>
+            <div>
+                <label><strong>Desde:</strong></label><br>
+                <input type="date" name="fecha_inicio" style="padding: 6px;">
+            </div>
+            <div>
+                <label><strong>Hasta:</strong></label><br>
+                <input type="date" name="fecha_fin" style="padding: 6px;">
+            </div>
+            <div>
+                <!-- Los botones envían qué formato se seleccionó -->
+                <button type="submit" name="formato" value="pdf" style="background: #17a2b8; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer;">📄 Descargar PDF</button>
+                <button type="submit" name="formato" value="excel" style="background: #28a745; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer;">📊 Descargar Excel</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- MENSAJES DE ÉXITO O ERROR -->
     <?php if (isset($_GET['mensaje']) && $_GET['mensaje'] === 'actualizado'): ?>
         <p style='color: #155724; background: #d4edda; padding: 10px; border-radius: 5px; margin-top:15px;'>Estado del ticket actualizado con éxito.</p>
+    <?php endif; ?>
+    
+    <?php if (isset($_GET['mensaje']) && $_GET['mensaje'] === 'vacio'): ?>
+        <p style='color: #856404; background: #fff3cd; padding: 10px; border-radius: 5px; margin-top:15px;'>No se encontraron tickets con esos filtros para exportar.</p>
     <?php endif; ?>
 
     <table>
@@ -62,6 +99,7 @@ require_once '../model/GestorDeTickets.php';
                     echo "<tr>";
                     echo "<td>#" . htmlspecialchars($ticket['id']) . "</td>";
                     echo "<td>" . htmlspecialchars($ticket['fecha_registro']) . "</td>";
+                    
                     // Solicitante y correo
                     echo "<td><strong>" . htmlspecialchars($ticket['nombre_usuario']) . "</strong><br><small style='color:blue;'>" . htmlspecialchars($ticket['correo']) . "</small></td>";
                     
@@ -99,7 +137,8 @@ require_once '../model/GestorDeTickets.php';
                     echo "</tr>";
                 }
             } else {
-                echo "<tr><td colspan='7' style='text-align: center;'>No hay tickets registrados en el sistema.</td></tr>";
+                // CORRECCIÓN: colspan='8' porque hay 8 columnas
+                echo "<tr><td colspan='8' style='text-align: center;'>No hay tickets registrados en el sistema.</td></tr>";
             }
             ?>
         </tbody>
