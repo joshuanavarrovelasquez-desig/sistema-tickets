@@ -17,7 +17,7 @@ class LoginController {
             $usuarioLogueado = $gestor->autenticarUsuario($correo, $password);
 
             if ($usuarioLogueado !== null) {
-                // Guardamos los datos en la sesión
+                // Guardamos los datos en la sesión 
                 $_SESSION['id_usuario'] = $usuarioLogueado['id_usuario'];
                 $_SESSION['nombre'] = $usuarioLogueado['nombre'];
                 $_SESSION['rol'] = $usuarioLogueado['rol'];
