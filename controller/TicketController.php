@@ -10,24 +10,21 @@ require_once __DIR__ . '/../model/GestorDeTickets.php';
 
 class TicketController {
     
-    // Método 1: Registra el ticket y sube la imagen a la carpeta uploads
     public function registrarNuevoTicket(): void {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            
             $idUsuarioLogueado = $_SESSION['id_usuario'];
             $correo = $_POST['correo'] ?? '';
-            $tipoTicket = $_POST['tipo'] ?? 'Incidente';
             $asunto = $_POST['asunto'] ?? '';
             $descripcion = $_POST['descripcion'] ?? '';
             $codigoBarras = !empty($_POST['codigo_barras']) ? $_POST['codigo_barras'] : null;
-            $detalleEspecifico = $_POST['detalle'] ?? '';
+            
+            $tipoTicket = 'Por Clasificar'; 
+            $detalleEspecifico = 'Pendiente de revisión por Admin';
 
-            // GESTIÓN DE SUBIDA DE ARCHIVOS
             $nombreArchivoAdjunto = null;
             if (isset($_FILES['archivo']) && $_FILES['archivo']['error'] === UPLOAD_ERR_OK) {
                 $archivoTmp = $_FILES['archivo']['tmp_name'];
                 $nombreOriginal = basename($_FILES['archivo']['name']);
-                // Generamos un nombre único con timestamp para evitar colisiones
                 $nombreArchivoAdjunto = time() . "_" . preg_replace("/[^a-zA-Z0-9.\-_]/", "", $nombreOriginal);
                 $carpetaDestino = __DIR__ . '/../uploads/';
                 
@@ -38,14 +35,7 @@ class TicketController {
                 move_uploaded_file($archivoTmp, $carpetaDestino . $nombreArchivoAdjunto);
             }
 
-            $nuevoTicket = null;
-
-            if ($tipoTicket === 'Incidente') {
-                $nuevoTicket = new Incidente($idUsuarioLogueado, $correo, $asunto, $descripcion, $codigoBarras, $nombreArchivoAdjunto, $detalleEspecifico);
-            } else if ($tipoTicket === 'Requerimiento') {
-                $requiereAprobacion = (strcasecmp($detalleEspecifico, 'Si') === 0);
-                $nuevoTicket = new Requerimiento($idUsuarioLogueado, $correo, $asunto, $descripcion, $codigoBarras, $nombreArchivoAdjunto, $requiereAprobacion);
-            }
+            $nuevoTicket = new Incidente($idUsuarioLogueado, $correo, $asunto, $descripcion, $codigoBarras, $nombreArchivoAdjunto, $detalleEspecifico);
 
             if ($nuevoTicket !== null) {
                 $gestor = new GestorDeTickets();
@@ -61,18 +51,26 @@ class TicketController {
         }
     }
 
-    // Método 2: Actualiza el estado (Usado por el panel del Admin)
     public function actualizarEstado(): void {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $idTicket = (int)$_POST['id_ticket'];
             $nuevoEstado = $_POST['nuevo_estado'];
+            $nuevoTipo = $_POST['nuevo_tipo'] ?? null;
 
             $gestor = new GestorDeTickets();
-            $actualizacionExitosa = $gestor->actualizarEstadoTicket($idTicket, $nuevoEstado);
+            
+            // Si el admin envía un nuevo tipo ITIL, actualizamos ambos campos
+            if ($nuevoTipo && isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin') {
+                $actualizacionExitosa = $gestor->actualizarTicketAdmin($idTicket, $nuevoEstado, $nuevoTipo);
+            } else {
+                $actualizacionExitosa = $gestor->actualizarEstadoTicket($idTicket, $nuevoEstado);
+            }
 
             if ($actualizacionExitosa) {
                 if (isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin') {
                     header("Location: views/panel_admin.php?mensaje=actualizado");
+                } elseif (isset($_SESSION['rol']) && $_SESSION['rol'] === 'tecnico') {
+                    header("Location: views/panel_tecnico.php?mensaje=actualizado");
                 } else {
                     header("Location: views/listar_tickets.php?mensaje=actualizado");
                 }
@@ -81,6 +79,44 @@ class TicketController {
                 echo "<h3 style='color:red;'>Error: No se pudo actualizar el ticket en la base de datos.</h3>";
                 echo "<a href='views/panel_admin.php'>Volver al panel</a>";
             }
+        }
+    }
+
+    public function asignarTecnico(): void {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $idTicket = (int)$_POST['id_ticket'];
+            $idTecnico = !empty($_POST['id_tecnico']) ? (int)$_POST['id_tecnico'] : null;
+
+            $gestor = new GestorDeTickets();
+            $exito = $gestor->asignarTecnicoTicket($idTicket, $idTecnico);
+
+            if ($exito) {
+                header("Location: views/panel_admin.php?mensaje=asignado");
+            } else {
+                echo "<h3 style='color:red;'>Error al asignar técnico.</h3>";
+            }
+            exit();
+        }
+    }
+
+    public function agregarComentario(): void {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            if (isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin') {
+                header("Location: views/ver_ticket.php?id=" . $_POST['id_ticket']);
+                exit();
+            }
+
+            $idTicket = (int)$_POST['id_ticket'];
+            $idUsuario = $_SESSION['id_usuario'];
+            $mensaje = trim($_POST['mensaje'] ?? '');
+
+            if (!empty($mensaje)) {
+                $gestor = new GestorDeTickets();
+                $gestor->agregarComentario($idTicket, $idUsuario, $mensaje);
+            }
+
+            header("Location: views/ver_ticket.php?id=" . $idTicket);
+            exit();
         }
     }
 }
