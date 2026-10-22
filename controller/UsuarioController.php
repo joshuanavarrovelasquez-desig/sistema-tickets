@@ -81,5 +81,36 @@ class UsuarioController {
             exit();
         }
     }
+    // MÉTODO PARA ACTUALIZAR USUARIO DESDE ADMIN
+    public function actualizarUsuarioAdmin(): void {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $idUsuario = $_POST['id_usuario'] ?? 0;
+            $nombre = $_POST['nombre'] ?? '';
+            $correo = $_POST['correo'] ?? '';
+            $password = $_POST['password'] ?? '';
+            $rol = $_POST['rol'] ?? 'cliente';
+
+            $gestor = new GestorDeUsuarios();
+            $exito = $gestor->actualizarUsuarioAdmin((int)$idUsuario, $nombre, $correo, $password, $rol);
+
+            if ($exito) {
+                header("Location: /sistema_tickets/views/gestion_usuarios.php?mensaje=actualizado");
+            } else {
+                header("Location: /sistema_tickets/views/gestion_usuarios.php?mensaje=error");
+            }
+            exit();
+        }
+    }
+
+    // MÉTODO PARA ELIMINAR USUARIO
+    public function eliminarUsuario(): void {
+        $idUsuario = $_GET['id'] ?? 0;
+        if ($idUsuario > 0) {
+            $gestor = new GestorDeUsuarios();
+            $gestor->eliminarUsuario((int)$idUsuario);
+        }
+        header("Location: /sistema_tickets/views/gestion_usuarios.php?mensaje=eliminado");
+        exit();
+    }
 }
 ?>

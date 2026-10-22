@@ -7,7 +7,13 @@ if (!isset($_SESSION['id_usuario']) || $_SESSION['rol'] !== 'cliente') {
 require_once '../model/GestorDeTickets.php';
 
 $gestor = new GestorDeTickets();
-$misTickets = $gestor->obtenerHistorialPorUsuario($_SESSION['id_usuario']);
+
+// Filtros para el cliente
+$estadoFiltro = $_GET['estado'] ?? '';
+$fechaInicioFiltro = $_GET['fecha_inicio'] ?? '';
+$fechaFinFiltro = $_GET['fecha_fin'] ?? '';
+
+$misTickets = $gestor->obtenerHistorialPorUsuarioFiltrado($_SESSION['id_usuario'], $estadoFiltro, $fechaInicioFiltro, $fechaFinFiltro);
 
 // Clasificación de tickets en 3 bloques
 $ticketsEnEspera = [];
@@ -59,6 +65,34 @@ foreach ($misTickets as $t) {
     <main>
         <a href="crear_ticket.php" class="btn-crear">➕ Crear Nuevo Ticket</a>
 
+        <!-- CUADRO DE BÚSQUEDA PARA EL CLIENTE -->
+        <div style="background: white; padding: 20px; margin-top: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+            <h3 style="margin-top: 0;">Filtrar Mis Tickets</h3>
+            <form action="listar_tickets.php" method="GET" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+                <div>
+                    <label><strong>Estado:</strong></label><br>
+                    <select name="estado" style="padding: 6px; width: 140px;">
+                        <option value="">Todos</option>
+                        <option value="Abierto" <?php echo $estadoFiltro === 'Abierto' ? 'selected' : ''; ?>>Abierto</option>
+                        <option value="En proceso" <?php echo $estadoFiltro === 'En proceso' ? 'selected' : ''; ?>>En proceso</option>
+                        <option value="Finalizado" <?php echo $estadoFiltro === 'Finalizado' ? 'selected' : ''; ?>>Finalizado</option>
+                    </select>
+                </div>
+                <div>
+                    <label><strong>Desde:</strong></label><br>
+                    <input type="date" name="fecha_inicio" value="<?php echo htmlspecialchars($fechaInicioFiltro); ?>" style="padding: 6px;">
+                </div>
+                <div>
+                    <label><strong>Hasta:</strong></label><br>
+                    <input type="date" name="fecha_fin" value="<?php echo htmlspecialchars($fechaFinFiltro); ?>" style="padding: 6px;">
+                </div>
+                <div>
+                    <button type="submit" style="background: #007bff; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">🔍 Buscar</button>
+                    <a href="listar_tickets.php" style="background: #6c757d; color: white; padding: 8px 12px; text-decoration: none; border-radius: 5px; font-size: 12px; display: inline-block;">Limpiar</a>
+                </div>
+            </form>
+        </div>
+
         <!-- BLOQUE 1: TICKETS EN ATENCIÓN / EN PROCESO -->
         <h3 class="seccion-titulo">🎧 1. Tickets en Atención (En Proceso)</h3>
         <table>
@@ -101,7 +135,7 @@ foreach ($misTickets as $t) {
                         </tr>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <tr><td colspan='6' style='text-align: center; color: #666;'>No tienes tickets en proceso actualmente.</td></tr>
+                    <tr><td colspan='6' style='text-align: center; color: #666;'>No hay tickets en proceso con estos filtros.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
@@ -137,7 +171,7 @@ foreach ($misTickets as $t) {
                         </tr>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <tr><td colspan='6' style='text-align: center; color: #666;'>No hay tickets pendientes de asignación.</td></tr>
+                    <tr><td colspan='6' style='text-align: center; color: #666;'>No hay tickets pendientes con estos filtros.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>
@@ -175,7 +209,7 @@ foreach ($misTickets as $t) {
                         </tr>
                     <?php endforeach; ?>
                 <?php else: ?>
-                    <tr><td colspan='6' style='text-align: center; color: #666;'>No tienes tickets finalizados aún.</td></tr>
+                    <tr><td colspan='6' style='text-align: center; color: #666;'>No hay tickets finalizados con estos filtros.</td></tr>
                 <?php endif; ?>
             </tbody>
         </table>

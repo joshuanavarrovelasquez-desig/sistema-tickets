@@ -71,5 +71,32 @@ class GestorDeUsuarios {
             return false;
         }
     }
+    // Actualizar usuario desde el panel de administración
+    public function actualizarUsuarioAdmin(int $idUsuario, string $nombre, string $correo, ?string $password, string $rol): bool {
+        try {
+            if (!empty($password)) {
+                $sql = "UPDATE usuarios SET nombre = ?, correo = ?, password = ?, rol = ? WHERE id_usuario = ?";
+                $stmt = $this->conexionDb->prepare($sql);
+                return $stmt->execute([$nombre, $correo, $password, $rol, $idUsuario]);
+            } else {
+                $sql = "UPDATE usuarios SET nombre = ?, correo = ?, rol = ? WHERE id_usuario = ?";
+                $stmt = $this->conexionDb->prepare($sql);
+                return $stmt->execute([$nombre, $correo, $rol, $idUsuario]);
+            }
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
+
+    // Eliminar usuario
+    public function eliminarUsuario(int $idUsuario): bool {
+        $sql = "DELETE FROM usuarios WHERE id_usuario = ?";
+        try {
+            $stmt = $this->conexionDb->prepare($sql);
+            return $stmt->execute([$idUsuario]);
+        } catch (PDOException $e) {
+            return false;
+        }
+    }
 }
 ?>

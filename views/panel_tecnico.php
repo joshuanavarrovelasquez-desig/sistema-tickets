@@ -6,7 +6,14 @@ if (!isset($_SESSION['id_usuario']) || $_SESSION['rol'] !== 'tecnico') {
 }
 require_once '../model/GestorDeTickets.php';
 $gestor = new GestorDeTickets();
-$misTicketsTecnico = $gestor->obtenerTicketsPorTecnico($_SESSION['id_usuario']);
+
+// Capturamos filtros de búsqueda para el técnico
+$usuarioFiltro = $_GET['usuario'] ?? '';
+$estadoFiltro = $_GET['estado'] ?? '';
+$fechaInicioFiltro = $_GET['fecha_inicio'] ?? '';
+$fechaFinFiltro = $_GET['fecha_fin'] ?? '';
+
+$misTicketsTecnico = $gestor->obtenerTicketsPorTecnicoFiltrados($_SESSION['id_usuario'], $usuarioFiltro, $estadoFiltro, $fechaInicioFiltro, $fechaFinFiltro);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -34,6 +41,38 @@ $misTicketsTecnico = $gestor->obtenerTicketsPorTecnico($_SESSION['id_usuario']);
             <a href="perfil.php" style="background: #ffc107; color: #212529; padding: 8px 12px; text-decoration: none; border-radius: 5px; margin-right: 10px; font-weight: bold;">⚙️ Mi Perfil</a>
             <a href="../index.php?accion=logout" class="btn-rojo">Cerrar Sesión</a>
         </div>
+    </div>
+
+    <!-- CUADRO DE BÚSQUEDA PARA EL TÉCNICO -->
+    <div style="background: white; padding: 20px; margin-top: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
+        <h3 style="margin-top: 0;">Filtrar Mis Tickets Asignados</h3>
+        <form action="panel_tecnico.php" method="GET" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+            <div>
+                <label><strong>Solicitante:</strong></label><br>
+                <input type="text" name="usuario" value="<?php echo htmlspecialchars($usuarioFiltro); ?>" placeholder="Ej. Juan" style="padding: 6px; width: 150px;">
+            </div>
+            <div>
+                <label><strong>Estado:</strong></label><br>
+                <select name="estado" style="padding: 6px; width: 120px;">
+                    <option value="">Todos</option>
+                    <option value="Abierto" <?php echo $estadoFiltro === 'Abierto' ? 'selected' : ''; ?>>Abierto</option>
+                    <option value="En proceso" <?php echo $estadoFiltro === 'En proceso' ? 'selected' : ''; ?>>En proceso</option>
+                    <option value="Finalizado" <?php echo $estadoFiltro === 'Finalizado' ? 'selected' : ''; ?>>Finalizado</option>
+                </select>
+            </div>
+            <div>
+                <label><strong>Desde:</strong></label><br>
+                <input type="date" name="fecha_inicio" value="<?php echo htmlspecialchars($fechaInicioFiltro); ?>" style="padding: 6px;">
+            </div>
+            <div>
+                <label><strong>Hasta:</strong></label><br>
+                <input type="date" name="fecha_fin" value="<?php echo htmlspecialchars($fechaFinFiltro); ?>" style="padding: 6px;">
+            </div>
+            <div>
+                <button type="submit" style="background: #007bff; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">🔍 Buscar</button>
+                <a href="panel_tecnico.php" style="background: #6c757d; color: white; padding: 8px 12px; text-decoration: none; border-radius: 5px; font-size: 12px; display: inline-block;">Limpiar</a>
+            </div>
+        </form>
     </div>
 
     <?php if (isset($_GET['mensaje']) && $_GET['mensaje'] === 'actualizado'): ?>
@@ -104,7 +143,7 @@ $misTicketsTecnico = $gestor->obtenerTicketsPorTecnico($_SESSION['id_usuario']);
                     </tr>
                 <?php endforeach; ?>
             <?php else: ?>
-                <tr><td colspan="8" style="text-align: center; color: #666;">No tienes tickets asignados en este momento.</td></tr>
+                <tr><td colspan="8" style="text-align: center; color: #666;">No se encontraron tickets con estos filtros.</td></tr>
             <?php endif; ?>
         </tbody>
     </table>

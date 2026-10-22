@@ -5,6 +5,18 @@ if (!isset($_SESSION['id_usuario']) || $_SESSION['rol'] !== 'admin') {
     exit();
 }
 require_once '../model/GestorDeTickets.php';
+
+$gestor = new GestorDeTickets();
+
+// Capturamos los filtros de búsqueda enviados por GET
+$usuarioFiltro = $_GET['usuario'] ?? '';
+$estadoFiltro = $_GET['estado'] ?? '';
+$fechaInicioFiltro = $_GET['fecha_inicio'] ?? '';
+$fechaFinFiltro = $_GET['fecha_fin'] ?? '';
+
+// Obtenemos los tickets filtrados para la pantalla
+$todosLosTickets = $gestor->obtenerTodosLosTicketsFiltrados($usuarioFiltro, $estadoFiltro, $fechaInicioFiltro, $fechaFinFiltro);
+$tecnicos = $gestor->obtenerTecnicos();
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -36,36 +48,40 @@ require_once '../model/GestorDeTickets.php';
         </div>
     </div>
     
-    <!-- CUADRO DE FILTROS PARA EXPORTACIÓN -->
+    <!-- CUADRO DE BÚSQUEDA Y EXPORTACIÓN -->
     <div style="background: white; padding: 20px; margin-top: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
-        <h3 style="margin-top: 0;">Generar Reporte Personalizado</h3>
-        <form action="../index.php" method="GET" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
-            <input type="hidden" name="accion" value="exportar">
+        <h3 style="margin-top: 0;">Filtrar Tickets / Generar Reporte</h3>
+        <form action="panel_admin.php" method="GET" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
             
             <div>
                 <label><strong>Usuario:</strong></label><br>
-                <input type="text" name="usuario" placeholder="Ej. Prueba" style="padding: 6px; width: 150px;">
+                <input type="text" name="usuario" value="<?php echo htmlspecialchars($usuarioFiltro); ?>" placeholder="Ej. Prueba" style="padding: 6px; width: 150px;">
             </div>
             <div>
                 <label><strong>Estado:</strong></label><br>
                 <select name="estado" style="padding: 6px; width: 120px;">
                     <option value="">Todos</option>
-                    <option value="Abierto">Abierto</option>
-                    <option value="En proceso">En proceso</option>
-                    <option value="Finalizado">Finalizado</option>
+                    <option value="Abierto" <?php echo $estadoFiltro === 'Abierto' ? 'selected' : ''; ?>>Abierto</option>
+                    <option value="En proceso" <?php echo $estadoFiltro === 'En proceso' ? 'selected' : ''; ?>>En proceso</option>
+                    <option value="Finalizado" <?php echo $estadoFiltro === 'Finalizado' ? 'selected' : ''; ?>>Finalizado</option>
                 </select>
             </div>
             <div>
                 <label><strong>Desde:</strong></label><br>
-                <input type="date" name="fecha_inicio" style="padding: 6px;">
+                <input type="date" name="fecha_inicio" value="<?php echo htmlspecialchars($fechaInicioFiltro); ?>" style="padding: 6px;">
             </div>
             <div>
                 <label><strong>Hasta:</strong></label><br>
-                <input type="date" name="fecha_fin" style="padding: 6px;">
+                <input type="date" name="fecha_fin" value="<?php echo htmlspecialchars($fechaFinFiltro); ?>" style="padding: 6px;">
             </div>
             <div>
-                <button type="submit" name="formato" value="pdf" style="background: #17a2b8; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer;">📄 Descargar PDF</button>
-                <button type="submit" name="formato" value="excel" style="background: #28a745; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer;">📊 Descargar Excel</button>
+                <button type="submit" style="background: #007bff; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">🔍 Buscar</button>
+                <a href="panel_admin.php" style="background: #6c757d; color: white; padding: 8px 12px; text-decoration: none; border-radius: 5px; font-size: 12px; display: inline-block;">Limpiar</a>
+            </div>
+            <div style="margin-left: auto;">
+                <!-- Botones que redirigen a la exportación manteniendo los filtros actuales -->
+                <a href="../index.php?accion=exportar&formato=pdf&usuario=<?php echo urlencode($usuarioFiltro); ?>&estado=<?php echo urlencode($estadoFiltro); ?>&fecha_inicio=<?php echo urlencode($fechaInicioFiltro); ?>&fecha_fin=<?php echo urlencode($fechaFinFiltro); ?>" style="background: #17a2b8; color: white; padding: 8px 15px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">📄 Descargar PDF</a>
+                <a href="../index.php?accion=exportar&formato=excel&usuario=<?php echo urlencode($usuarioFiltro); ?>&estado=<?php echo urlencode($estadoFiltro); ?>&fecha_inicio=<?php echo urlencode($fechaInicioFiltro); ?>&fecha_fin=<?php echo urlencode($fechaFinFiltro); ?>" style="background: #28a745; color: white; padding: 8px 15px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">📊 Descargar Excel</a>
             </div>
         </form>
     </div>
@@ -99,31 +115,23 @@ require_once '../model/GestorDeTickets.php';
         </thead>
         <tbody>
             <?php
-            $gestor = new GestorDeTickets();
-            $tecnicos = $gestor->obtenerTecnicos();
-            $todosLosTickets = $gestor->obtenerTodosLosTickets();
-
             if (count($todosLosTickets) > 0) {
                 foreach ($todosLosTickets as $ticket) {
                     echo "<tr>";
                     echo "<td>#" . htmlspecialchars($ticket['id']) . "</td>";
                     echo "<td>" . htmlspecialchars($ticket['fecha_registro']) . "</td>";
                     
-                    // Solicitante y correo
                     echo "<td><strong>" . htmlspecialchars($ticket['nombre_usuario']) . "</strong><br><small style='color:blue;'>" . htmlspecialchars($ticket['correo']) . "</small></td>";
                     
-                    // Clasificación y Asunto
                     $badgeColor = ($ticket['tipo'] === 'Incidente') ? '#dc3545' : (($ticket['tipo'] === 'Requerimiento') ? '#ffc107' : '#6c757d');
                     echo "<td><span class='badge' style='background: $badgeColor; color: " . ($ticket['tipo'] === 'Requerimiento' ? '#212529' : 'white') . ";'>" . htmlspecialchars($ticket['tipo']) . "</span><br><strong>" . htmlspecialchars($ticket['asunto']) . "</strong></td>";
                     
-                    // Descripción y Código de barras
                     echo "<td>" . nl2br(htmlspecialchars($ticket['descripcion'])) . "<br><br><small><strong>Cod. Barras:</strong> " . ($ticket['codigo_barras'] ? htmlspecialchars($ticket['codigo_barras']) : 'N/A') . "</small></td>";
                     
-                    // Estado y SLA / Prioridad
                     $colorEstado = $ticket['estado'] === 'Finalizado' ? 'green' : ($ticket['estado'] === 'En proceso' ? 'orange' : 'black');
-                    echo "<td><span style='color: $colorEstado; font-weight: bold;'>" . htmlspecialchars($ticket['estado']) . "</span><br><small>SLA: " . htmlspecialchars($ticket['tiempo_resolucion']) . "</small></td>";
+                    $slaDisplay = ($ticket['tipo'] === 'Por Clasificar') ? 'Pendiente de clasificación' : $ticket['tiempo_resolucion'];
+                    echo "<td><span style='color: $colorEstado; font-weight: bold;'>" . htmlspecialchars($ticket['estado']) . "</span><br><small>SLA: " . htmlspecialchars($slaDisplay) . "</small></td>";
                     
-                    // FORMULARIO PARA ASIGNAR TÉCNICO
                     echo "<td>
                             <form action='../index.php?accion=asignar_tecnico' method='POST' style='display: flex; flex-direction: column; gap: 5px;'>
                                 <input type='hidden' name='id_ticket' value='" . $ticket['id'] . "'>
@@ -138,7 +146,6 @@ require_once '../model/GestorDeTickets.php';
                             </form>
                           </td>";
 
-                    // FORMULARIO PARA CLASIFICAR ITIL Y CAMBIAR ESTADO
                     echo "<td>
                             <form action='../index.php?accion=actualizar_estado' method='POST' style='display: flex; flex-direction: column; gap: 5px;'>
                                 <input type='hidden' name='id_ticket' value='" . $ticket['id'] . "'>
@@ -158,7 +165,6 @@ require_once '../model/GestorDeTickets.php';
                             </form>
                           </td>";
 
-                    // BOTÓN DE ACCESO AL CHAT PARA EL ADMINISTRADOR (MODO OBSERVACIÓN)
                     echo "<td style='text-align: center;'>
                             <a href='ver_ticket.php?id=" . $ticket['id'] . "' style='background: #17a2b8; color: white; padding: 8px 12px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;'>🔍 Ver Chat</a>
                           </td>";
@@ -166,7 +172,7 @@ require_once '../model/GestorDeTickets.php';
                     echo "</tr>";
                 }
             } else {
-                echo "<tr><td colspan='9' style='text-align: center;'>No hay tickets registrados en el sistema.</td></tr>";
+                echo "<tr><td colspan='9' style='text-align: center;'>No hay tickets registrados con estos filtros.</td></tr>";
             }
             ?>
         </tbody>

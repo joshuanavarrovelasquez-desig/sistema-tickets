@@ -41,6 +41,12 @@ if ($accion === 'vista_login') {
 } elseif ($accion === 'asignar_tecnico') {
     $controlador = new TicketController();
     $controlador->asignarTecnico();
+} elseif ($accion === 'actualizar_usuario') {
+    $controlador = new UsuarioController();
+    $controlador->actualizarUsuarioAdmin();
+} elseif ($accion === 'eliminar_usuario') {
+    $controlador = new UsuarioController();
+    $controlador->eliminarUsuario();
 } elseif ($accion === 'exportar') {
     if (isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin') {
         require_once 'controller/ReporteController.php';

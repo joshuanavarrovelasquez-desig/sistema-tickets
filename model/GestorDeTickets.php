@@ -10,11 +10,14 @@ class GestorDeTickets {
     }
 
     public function guardarTicket(Ticket $nuevoTicket, string $tipoTicket): bool {
+        // Si el ticket se crea como "Por Clasificar", el SLA queda pendiente
+        $tiempoResolucion = ($tipoTicket === 'Por Clasificar') ? 'Pendiente de clasificación' : $nuevoTicket->calcularTiempoResolucion();
+        
         $sql = "INSERT INTO tickets (id_usuario, correo, asunto, descripcion, codigo_barras, archivo_adjunto, estado, tipo, tiempo_resolucion) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
         try {
             $sentencia = $this->conexionDb->prepare($sql);
-            $sentencia->execute([
+            $sentencia.execute([
                 $nuevoTicket->getIdUsuario(),
                 $nuevoTicket->getCorreo(),
                 $nuevoTicket->getAsunto(),
@@ -23,7 +26,7 @@ class GestorDeTickets {
                 $nuevoTicket->getArchivoAdjunto(),
                 $nuevoTicket->getEstadoActual(),
                 $tipoTicket,
-                $nuevoTicket->calcularTiempoResolucion()
+                $tiempoResolucion
             ]);
             return true;
         } catch (PDOException $e) {
@@ -32,26 +35,89 @@ class GestorDeTickets {
         }
     }
 
-    public function obtenerHistorialPorUsuario(int $idUsuario): array {
+    private function calcularSlaSegunTipo(string $tipo, string $asunto, string $descripcion): string {
+        if ($tipo === 'Por Clasificar') {
+            return 'Pendiente de clasificación';
+        }
+        $texto = strtolower($asunto . ' ' . $descripcion);
+        if ($tipo === 'Incidente') {
+            if (str_contains($texto, 'crítico') || str_contains($texto, 'critico') || str_contains($texto, 'urgente') || str_contains($texto, 'placa') || str_contains($texto, 'caida') || str_contains($texto, 'sin internet')) {
+                return '2 horas (SLA Crítico)';
+            }
+            return '24 horas (SLA Normal)';
+        } elseif ($tipo === 'Requerimiento') {
+            return '24 horas (SLA Normal)';
+        }
+        return 'Pendiente de clasificación';
+    }
+
+    // Historial del cliente con filtros opcionales de búsqueda
+    public function obtenerHistorialPorUsuarioFiltrado(int $idUsuario, ?string $estado = null, ?string $fechaInicio = null, ?string $fechaFin = null): array {
         $sql = "SELECT t.*, u_tec.nombre AS nombre_tecnico 
                 FROM tickets t 
                 LEFT JOIN usuarios u_tec ON t.id_tecnico = u_tec.id_usuario 
-                WHERE t.id_usuario = ? 
-                ORDER BY t.id DESC";
+                WHERE t.id_usuario = ?";
+        
+        $params = [$idUsuario];
+
+        if (!empty($estado)) {
+            $sql .= " AND t.estado = ?";
+            $params[] = $estado;
+        }
+        if (!empty($fechaInicio)) {
+            $sql .= " AND DATE(t.fecha_registro) >= ?";
+            $params[] = $fechaInicio;
+        }
+        if (!empty($fechaFin)) {
+            $sql .= " AND DATE(t.fecha_registro) <= ?";
+            $params[] = $fechaFin;
+        }
+
+        $sql .= " ORDER BY t.id DESC";
         $stmt = $this->conexionDb->prepare($sql);
-        $stmt->execute([$idUsuario]);
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function obtenerTodosLosTickets(): array {
-        // Añadimos t.id_tecnico a la consulta SELECT para que el panel administrativo lo reconozca
+    // Mantener compatibilidad si se llama sin filtros
+    public function obtenerHistorialPorUsuario(int $idUsuario): array {
+        return $this->obtenerHistorialPorUsuarioFiltrado($idUsuario);
+    }
+
+    // Obtener todos los tickets con filtros opcionales de búsqueda (para el Admin)
+    public function obtenerTodosLosTicketsFiltrados(?string $nombreUsuario = null, ?string $estado = null, ?string $fechaInicio = null, ?string $fechaFin = null): array {
         $sql = "SELECT t.id, t.tipo, t.asunto, t.descripcion, t.codigo_barras, t.archivo_adjunto, t.estado, t.tiempo_resolucion, t.correo, t.fecha_registro, t.id_tecnico, u.nombre as nombre_usuario 
                 FROM tickets t 
                 JOIN usuarios u ON t.id_usuario = u.id_usuario 
-                ORDER BY t.id DESC";
+                WHERE 1=1";
+        
+        $params = [];
+
+        if (!empty($nombreUsuario)) {
+            $sql .= " AND u.nombre LIKE ?";
+            $params[] = "%" . $nombreUsuario . "%";
+        }
+        if (!empty($estado)) {
+            $sql .= " AND t.estado = ?";
+            $params[] = $estado;
+        }
+        if (!empty($fechaInicio)) {
+            $sql .= " AND DATE(t.fecha_registro) >= ?";
+            $params[] = $fechaInicio;
+        }
+        if (!empty($fechaFin)) {
+            $sql .= " AND DATE(t.fecha_registro) <= ?";
+            $params[] = $fechaFin;
+        }
+
+        $sql .= " ORDER BY t.id DESC";
         $sentencia = $this->conexionDb->prepare($sql);
-        $sentencia->execute();
+        $sentencia->execute($params);
         return $sentencia->fetchAll(PDO::FETCH_ASSOC); 
+    }
+
+    public function obtenerTodosLosTickets(): array {
+        return $this->obtenerTodosLosTicketsFiltrados();
     }
 
     public function actualizarEstadoTicket(int $idTicket, string $nuevoEstado): bool {
@@ -65,12 +131,22 @@ class GestorDeTickets {
         }
     }
 
-    // Nuevo: Método para que el Admin actualice Tipo ITIL y Estado a la vez
     public function actualizarTicketAdmin(int $idTicket, string $nuevoEstado, string $nuevoTipo): bool {
-        $sql = "UPDATE tickets SET estado = ?, tipo = ? WHERE id = ?";
+        // Obtenemos asunto y descripción para recalcular el SLA al cambiar el tipo ITIL
+        $sqlInfo = "SELECT asunto, descripcion FROM tickets WHERE id = ?";
+        $stmtInfo = $this->conexionDb->prepare($sqlInfo);
+        $stmtInfo->execute([$idTicket]);
+        $ticketInfo = $stmtInfo->fetch(PDO::FETCH_ASSOC);
+
+        $tiempoResolucion = 'Pendiente de clasificación';
+        if ($ticketInfo) {
+            $tiempoResolucion = $this->calcularSlaSegunTipo($nuevoTipo, $ticketInfo['asunto'], $ticketInfo['descripcion']);
+        }
+
+        $sql = "UPDATE tickets SET estado = ?, tipo = ?, tiempo_resolucion = ? WHERE id = ?";
         try {
             $stmt = $this->conexionDb->prepare($sql);
-            return $stmt->execute([$nuevoEstado, $nuevoTipo, $idTicket]);
+            return $stmt->execute([$nuevoEstado, $nuevoTipo, $tiempoResolucion, $idTicket]);
         } catch (PDOException $e) {
             return false;
         }
@@ -93,16 +169,40 @@ class GestorDeTickets {
         }
     }
 
-    // Actualizado: Ordena por tiempo de resolución (SLA) ascendente para dar máxima prioridad a los más urgentes
-    public function obtenerTicketsPorTecnico(int $idTecnico): array {
+    // Tickets asignados al técnico con filtros opcionales de búsqueda
+    public function obtenerTicketsPorTecnicoFiltrados(int $idTecnico, ?string $nombreUsuario = null, ?string $estado = null, ?string $fechaInicio = null, ?string $fechaFin = null): array {
         $sql = "SELECT t.*, u.nombre as nombre_usuario, u.correo 
                 FROM tickets t 
                 JOIN usuarios u ON t.id_usuario = u.id_usuario 
-                WHERE t.id_tecnico = ? 
-                ORDER BY t.tiempo_resolucion ASC, t.id DESC";
+                WHERE t.id_tecnico = ?";
+        
+        $params = [$idTecnico];
+
+        if (!empty($nombreUsuario)) {
+            $sql .= " AND u.nombre LIKE ?";
+            $params[] = "%" . $nombreUsuario . "%";
+        }
+        if (!empty($estado)) {
+            $sql .= " AND t.estado = ?";
+            $params[] = $estado;
+        }
+        if (!empty($fechaInicio)) {
+            $sql .= " AND DATE(t.fecha_registro) >= ?";
+            $params[] = $fechaInicio;
+        }
+        if (!empty($fechaFin)) {
+            $sql .= " AND DATE(t.fecha_registro) <= ?";
+            $params[] = $fechaFin;
+        }
+
+        $sql .= " ORDER BY t.tiempo_resolucion ASC, t.id DESC";
         $stmt = $this->conexionDb->prepare($sql);
-        $stmt->execute([$idTecnico]);
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function obtenerTicketsPorTecnico(int $idTecnico): array {
+        return $this->obtenerTicketsPorTecnicoFiltrados($idTecnico);
     }
 
     public function obtenerComentariosPorTicket(int $idTicket): array {
