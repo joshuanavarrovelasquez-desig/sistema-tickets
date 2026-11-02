@@ -1,3 +1,4 @@
+<?php if (!defined('APP_INICIADA')) { http_response_code(403); exit('Acceso no permitido.'); } ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -22,12 +23,13 @@
         <?php endif; ?>
 
         <!-- La acción va hacia el router principal (index.php) -->
-        <form action="../index.php?accion=login" method="POST">
+        <form action="index.php?accion=login" method="POST">
+<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>">
             <label>Correo Electrónico:</label>
-            <input type="email" name="correo" value="prueba@sistema.com" required>
+            <input type="email" name="correo" required>
             
             <label>Contraseña:</label>
-            <input type="password" name="password" value="123456" required>
+            <input type="password" name="password" required>
             
             <button type="submit">Iniciar Sesión</button>
         </form>

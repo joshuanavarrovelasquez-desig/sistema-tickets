@@ -1,13 +1,4 @@
-<?php
-session_start();
-if (!isset($_SESSION['id_usuario'])) {
-    header("Location: login.php");
-    exit();
-}
-require_once '../model/GestorDeUsuarios.php';
-$gestor = new GestorDeUsuarios();
-$usuario = $gestor->obtenerUsuarioPorId($_SESSION['id_usuario']);
-?>
+<?php if (!defined('APP_INICIADA')) { http_response_code(403); exit('Acceso no permitido.'); } ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -26,27 +17,26 @@ $usuario = $gestor->obtenerUsuarioPorId($_SESSION['id_usuario']);
     </style>
 </head>
 <body>
+    <?php require __DIR__ . '/_mensajes.php'; ?>
     <div class="cabecera">
         <h2>Mi Perfil / Ajustes de Cuenta</h2>
-        <a href="../index.php?accion=logout" style="background: #dc3545; color: white; padding: 8px 12px; text-decoration: none; border-radius: 5px;">Cerrar Sesión</a>
+        <a href="index.php?accion=logout" style="background: #dc3545; color: white; padding: 8px 12px; text-decoration: none; border-radius: 5px;">Cerrar Sesión</a>
     </div>
 
     <div class="formulario">
-        <?php
-        $volverUrl = ($_SESSION['rol'] === 'admin') ? 'panel_admin.php' : 'listar_tickets.php';
-        ?>
-        <a href="<?php echo $volverUrl; ?>" class="btn-volver">← Volver</a>
+                <a href="index.php?accion=<?= htmlspecialchars($volverAccion) ?>" class="btn-volver">← Volver</a>
 
         <?php if (isset($_GET['mensaje']) && $_GET['mensaje'] === 'actualizado'): ?>
             <p style='color: #155724; background: #d4edda; padding: 10px; border-radius: 5px; margin-bottom: 15px;'>¡Perfil actualizado con éxito!</p>
         <?php endif; ?>
 
-        <form action="../index.php?accion=actualizar_perfil" method="POST">
+        <form action="index.php?accion=actualizar_perfil" method="POST">
+<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>">
             <label for="nombre">Nombre Completo:</label>
-            <input type="text" name="nombre" id="nombre" value="<?php echo htmlspecialchars($usuario['nombre']); ?>" required>
+            <input type="text" name="nombre" id="nombre" value="<?php echo htmlspecialchars($usuario->getNombre()); ?>" required>
 
             <label for="correo">Correo Electrónico:</label>
-            <input type="email" name="correo" id="correo" value="<?php echo htmlspecialchars($usuario['correo']); ?>" required>
+            <input type="email" name="correo" id="correo" value="<?php echo htmlspecialchars($usuario->getCorreo()); ?>" required>
 
             <label for="password">Nueva Contraseña <span class="opcional">(Déjalo en blanco si no deseas cambiarla)</span>:</label>
             <input type="password" name="password" id="password" placeholder="Escribe nueva contraseña solo si deseas cambiarla">

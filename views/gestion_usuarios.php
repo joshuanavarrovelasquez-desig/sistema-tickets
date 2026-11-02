@@ -1,19 +1,4 @@
-<?php
-session_start();
-if (!isset($_SESSION['id_usuario']) || $_SESSION['rol'] !== 'admin') {
-    header("Location: login.php");
-    exit();
-}
-require_once '../model/GestorDeUsuarios.php';
-$gestor = new GestorDeUsuarios();
-$usuarios = $gestor->obtenerTodosLosUsuarios();
-
-// Si se solicita editar un usuario, lo cargamos
-$usuarioAEditar = null;
-if (isset($_GET['editar'])) {
-    $usuarioAEditar = $gestor->obtenerUsuarioPorId((int)$_GET['editar']);
-}
-?>
+<?php if (!defined('APP_INICIADA')) { http_response_code(403); exit('Acceso no permitido.'); } ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -38,30 +23,31 @@ if (isset($_GET['editar'])) {
     </style>
 </head>
 <body>
+    <?php require __DIR__ . '/_mensajes.php'; ?>
     <div class="cabecera">
         <h2>Gestión de Usuarios</h2>
         <div>
-            <a href="panel_admin.php" class="btn-azul">← Volver al Panel de Tickets</a>
-            <a href="../index.php?accion=logout" class="btn-rojo">Cerrar Sesión</a>
+            <a href="index.php?accion=panel_admin" class="btn-azul">← Volver al Panel de Tickets</a>
+            <a href="index.php?accion=logout" class="btn-rojo">Cerrar Sesión</a>
         </div>
     </div>
 
-    <!-- FORMULARIO PARA CREAR O EDITAR USUARIO -->
     <div class="card-formulario">
-        <h3 style="margin-top: 0;"><?php echo $usuarioAEditar ? '✏️ Editar Usuario (ID #' . $usuarioAEditar['id_usuario'] . ')' : 'Registrar Nuevo Usuario'; ?></h3>
-        <form action="../index.php?accion=<?php echo $usuarioAEditar ? 'actualizar_usuario' : 'crear_usuario'; ?>" method="POST" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+        <h3 style="margin-top: 0;"><?php echo $usuarioAEditar ? '✏️ Editar Usuario (ID #' . $usuarioAEditar->getId() . ')' : 'Registrar Nuevo Usuario'; ?></h3>
+        <form action="index.php?accion=<?php echo $usuarioAEditar ? 'actualizar_usuario' : 'crear_usuario'; ?>" method="POST" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>">
             
             <?php if ($usuarioAEditar): ?>
-                <input type="hidden" name="id_usuario" value="<?php echo $usuarioAEditar['id_usuario']; ?>">
+                <input type="hidden" name="id_usuario" value="<?php echo $usuarioAEditar->getId(); ?>">
             <?php endif; ?>
 
             <div>
                 <label><strong>Nombre Completo:</strong></label><br>
-                <input type="text" name="nombre" required value="<?php echo htmlspecialchars($usuarioAEditar['nombre'] ?? ''); ?>" placeholder="Ej. Juan Pérez">
+                <input type="text" name="nombre" required value="<?php echo htmlspecialchars($usuarioAEditar?->getNombre() ?? ''); ?>" placeholder="Ej. Juan Pérez">
             </div>
             <div>
                 <label><strong>Correo Electrónico:</strong></label><br>
-                <input type="email" name="correo" required value="<?php echo htmlspecialchars($usuarioAEditar['correo'] ?? ''); ?>" placeholder="correo@sistema.com">
+                <input type="email" name="correo" required value="<?php echo htmlspecialchars($usuarioAEditar?->getCorreo() ?? ''); ?>" placeholder="correo@sistema.com">
             </div>
             <div>
                 <label><strong>Contraseña:</strong></label><br>
@@ -70,34 +56,30 @@ if (isset($_GET['editar'])) {
             <div>
                 <label><strong>Rol:</strong></label><br>
                 <select name="rol" required>
-                    <option value="cliente" <?php echo (isset($usuarioAEditar['rol']) && $usuarioAEditar['rol'] === 'cliente') ? 'selected' : ''; ?>>Cliente / Usuario</option>
-                    <option value="tecnico" <?php echo (isset($usuarioAEditar['rol']) && $usuarioAEditar['rol'] === 'tecnico') ? 'selected' : ''; ?>>Técnico de Soporte</option>
-                    <option value="admin" <?php echo (isset($usuarioAEditar['rol']) && $usuarioAEditar['rol'] === 'admin') ? 'selected' : ''; ?>>Administrador</option>
+                    <option value="cliente" <?php echo ($usuarioAEditar?->getRol() === 'cliente') ? 'selected' : ''; ?>>Cliente / Usuario</option>
+                    <option value="tecnico" <?php echo ($usuarioAEditar?->getRol() === 'tecnico') ? 'selected' : ''; ?>>Técnico de Soporte</option>
+                    <option value="admin" <?php echo ($usuarioAEditar?->getRol() === 'admin') ? 'selected' : ''; ?>>Administrador</option>
                 </select>
             </div>
             <div>
                 <button type="submit" style="background: <?php echo $usuarioAEditar ? '#ffc107; color: #212529;' : '#28a745;'; ?>"><?php echo $usuarioAEditar ? '💾 Actualizar Usuario' : '+ Guardar Usuario'; ?></button>
                 <?php if ($usuarioAEditar): ?>
-                    <a href="gestion_usuarios.php" style="background: #6c757d; color: white; padding: 8px 12px; text-decoration: none; border-radius: 4px; font-size: 13px; display: inline-block; margin-left: 5px;">Cancelar</a>
+                    <a href="index.php?accion=gestion_usuarios" style="background: #6c757d; color: white; padding: 8px 12px; text-decoration: none; border-radius: 4px; font-size: 13px; display: inline-block; margin-left: 5px;">Cancelar</a>
                 <?php endif; ?>
             </div>
         </form>
     </div>
 
-    <!-- MENSAJES DE ESTADO -->
     <?php if (isset($_GET['mensaje']) && $_GET['mensaje'] === 'creado'): ?>
         <p style='color: #155724; background: #d4edda; padding: 10px; border-radius: 5px; margin-top:15px;'>Usuario registrado con éxito.</p>
     <?php endif; ?>
-
     <?php if (isset($_GET['mensaje']) && $_GET['mensaje'] === 'actualizado'): ?>
         <p style='color: #155724; background: #d4edda; padding: 10px; border-radius: 5px; margin-top:15px;'>Usuario actualizado con éxito.</p>
     <?php endif; ?>
-
     <?php if (isset($_GET['mensaje']) && $_GET['mensaje'] === 'eliminado'): ?>
         <p style='color: #721c24; background: #f8d7da; padding: 10px; border-radius: 5px; margin-top:15px;'>Usuario eliminado correctamente.</p>
     <?php endif; ?>
 
-    <!-- TABLA DE USUARIOS REGISTRADOS -->
     <table>
         <thead>
             <tr>
@@ -111,13 +93,17 @@ if (isset($_GET['editar'])) {
         <tbody>
             <?php foreach ($usuarios as $usr): ?>
                 <tr>
-                    <td>#<?php echo htmlspecialchars($usr['id_usuario']); ?></td>
-                    <td><strong><?php echo htmlspecialchars($usr['nombre']); ?></strong></td>
-                    <td><?php echo htmlspecialchars($usr['correo']); ?></td>
-                    <td><span class="badge"><?php echo htmlspecialchars($usr['rol']); ?></span></td>
+                    <td>#<?php echo htmlspecialchars($usr->getId()); ?></td>
+                    <td><strong><?php echo htmlspecialchars($usr->getNombre()); ?></strong></td>
+                    <td><?php echo htmlspecialchars($usr->getCorreo()); ?></td>
+                    <td><span class="badge"><?php echo htmlspecialchars($usr->getRol()); ?></span></td>
                     <td style="text-align: center; white-space: nowrap;">
-                        <a href="gestion_usuarios.php?editar=<?php echo $usr['id_usuario']; ?>" class="btn-editar">✏️ Editar</a>
-                        <a href="../index.php?accion=eliminar_usuario&id=<?php echo $usr['id_usuario']; ?>" class="btn-eliminar" onclick="return confirm('¿Estás seguro de eliminar al usuario <?php echo htmlspecialchars($usr['nombre']); ?>?');">❌ Eliminar</a>
+                        <a href="index.php?accion=gestion_usuarios&editar=<?php echo $usr->getId(); ?>" class="btn-editar">✏️ Editar</a>
+                        <form action="index.php?accion=eliminar_usuario" method="POST" style="display:inline;" onsubmit="return confirm(<?= htmlspecialchars(json_encode('¿Estás seguro de eliminar al usuario ' . $usr->getNombre() . '?'), ENT_QUOTES) ?>);">
+                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>">
+                            <input type="hidden" name="id_usuario" value="<?= (int)$usr->getId() ?>">
+                            <button type="submit" class="btn-eliminar" style="border:none; cursor:pointer; margin-top:0;">❌ Eliminar</button>
+                        </form>
                     </td>
                 </tr>
             <?php endforeach; ?>

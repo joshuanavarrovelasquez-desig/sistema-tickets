@@ -1,60 +1,65 @@
 <?php
+/**
+ * FRONT CONTROLLER: único punto de entrada de la aplicación.
+ * Flujo:  Navegador → index.php → Controlador → (Modelo + DAO/PDO → BD) → Vista
+ */
+session_set_cookie_params(['httponly' => true, 'samesite' => 'Lax']);
 session_start();
+define('APP_INICIADA', true);
 
-// 1. IMPORTANTE: Requerimos el controlador de usuarios
-require_once 'controller/UsuarioController.php';
-require_once 'controller/TicketController.php';
+// Carga automática de clases (controller, model, dao, config)
+spl_autoload_register(function (string $clase): void {
+    foreach (['controller', 'model', 'dao', 'config'] as $carpeta) {
+        $archivo = __DIR__ . "/$carpeta/$clase.php";
+        if (is_file($archivo)) {
+            require_once $archivo;
+            return;
+        }
+    }
+});
+
+// accion => [Controlador, método]
+$rutas = [
+    // Sesión
+    'vista_login'        => ['AuthController', 'mostrarLogin'],
+    'login'              => ['AuthController', 'procesarLogin'],
+    'logout'             => ['AuthController', 'cerrarSesion'],
+    // Tickets
+    'panel_admin'        => ['TicketController', 'panelAdmin'],
+    'panel_tecnico'      => ['TicketController', 'panelTecnico'],
+    'listar_tickets'     => ['TicketController', 'listarMisTickets'],
+    'crear_ticket'       => ['TicketController', 'formularioCrear'],
+    'crear'              => ['TicketController', 'registrarNuevoTicket'],
+    'ver_ticket'         => ['TicketController', 'verTicket'],
+    'actualizar_estado'  => ['TicketController', 'actualizarEstado'],
+    'asignar_tecnico'    => ['TicketController', 'asignarTecnico'],
+    'agregar_comentario' => ['TicketController', 'agregarComentario'],
+    // Usuarios
+    'gestion_usuarios'   => ['UsuarioController', 'gestionar'],
+    'crear_usuario'      => ['UsuarioController', 'registrarNuevoUsuario'],
+    'actualizar_usuario' => ['UsuarioController', 'actualizarUsuarioAdmin'],
+    'eliminar_usuario'   => ['UsuarioController', 'eliminarUsuario'],
+    'perfil'             => ['UsuarioController', 'perfil'],
+    'actualizar_perfil'  => ['UsuarioController', 'actualizarPerfil'],
+    // Reportes
+    'exportar'           => ['ReporteController', 'procesarExportacion'],
+];
 
 $accion = $_GET['accion'] ?? 'vista_login';
-
-if ($accion === 'vista_login') {
-    header("Location: views/login.php");
+if (!isset($rutas[$accion])) {
+    header('Location: index.php?accion=vista_login');
     exit();
-} elseif ($accion === 'login') {
-    $controlador = new UsuarioController();
-    $controlador->procesarLogin();
-} elseif ($accion === 'logout') {
-    $controlador = new UsuarioController();
-    $controlador->cerrarSesion();
-} elseif ($accion === 'crear_usuario') {
-    // 2. Aquí procesamos la creación del nuevo usuario
-    $controlador = new UsuarioController();
-    $controlador->registrarNuevoUsuario();
-} elseif ($accion === 'crear') {
-    if (!isset($_SESSION['id_usuario'])) {
-        header("Location: views/login.php");
-        exit();
-    }
-    $controlador = new TicketController();
-    $controlador->registrarNuevoTicket();
-} elseif ($accion === 'actualizar_estado') {
-    $controlador = new TicketController();
-    $controlador->actualizarEstado();
-
-}elseif ($accion === 'agregar_comentario') {
-    $controlador = new TicketController();
-    $controlador->agregarComentario();
-    
-} elseif ($accion === 'actualizar_perfil') {
-    $controlador = new UsuarioController();
-    $controlador->actualizarPerfil();
-} elseif ($accion === 'asignar_tecnico') {
-    $controlador = new TicketController();
-    $controlador->asignarTecnico();
-} elseif ($accion === 'actualizar_usuario') {
-    $controlador = new UsuarioController();
-    $controlador->actualizarUsuarioAdmin();
-} elseif ($accion === 'eliminar_usuario') {
-    $controlador = new UsuarioController();
-    $controlador->eliminarUsuario();
-} elseif ($accion === 'exportar') {
-    if (isset($_SESSION['rol']) && $_SESSION['rol'] === 'admin') {
-        require_once 'controller/ReporteController.php';
-        $controlador = new ReporteController();
-        $controlador->procesarExportacion();
-    } else {
-        header("Location: views/login.php");
-        exit();
-    }
 }
-?>
+
+try {
+    [$clase, $metodo] = $rutas[$accion];
+    (new $clase())->$metodo();
+} catch (Throwable $error) {
+    error_log('[APP] ' . $error->getMessage() . ' en ' . $error->getFile() . ':' . $error->getLine());
+    http_response_code(500);
+    $detalle = ($error instanceof PDOException)
+        ? 'No se pudo conectar o consultar la base de datos. Verifica que MySQL (XAMPP) esté encendido y que exista la base "gestion_tickets".'
+        : 'Ocurrió un error inesperado. Revisa el log de errores de PHP.';
+    echo '<h3 style="font-family:Arial; color:#b02a37; text-align:center; margin-top:50px;">' . htmlspecialchars($detalle) . '</h3>';
+    echo '<p style="font-family:monospace; text-align:center; color:#555;">' . htmlspecialchars($error->getMessage() . ' — ' . basename($error->getFile()) . ':' . $error->getLine()) . '</p>';
+}

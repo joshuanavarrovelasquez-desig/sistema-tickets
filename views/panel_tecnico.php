@@ -1,20 +1,4 @@
-<?php
-session_start();
-if (!isset($_SESSION['id_usuario']) || $_SESSION['rol'] !== 'tecnico') {
-    header("Location: login.php");
-    exit();
-}
-require_once '../model/GestorDeTickets.php';
-$gestor = new GestorDeTickets();
-
-// Capturamos filtros de búsqueda para el técnico
-$usuarioFiltro = $_GET['usuario'] ?? '';
-$estadoFiltro = $_GET['estado'] ?? '';
-$fechaInicioFiltro = $_GET['fecha_inicio'] ?? '';
-$fechaFinFiltro = $_GET['fecha_fin'] ?? '';
-
-$misTicketsTecnico = $gestor->obtenerTicketsPorTecnicoFiltrados($_SESSION['id_usuario'], $usuarioFiltro, $estadoFiltro, $fechaInicioFiltro, $fechaFinFiltro);
-?>
+<?php if (!defined('APP_INICIADA')) { http_response_code(403); exit('Acceso no permitido.'); } ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -35,18 +19,19 @@ $misTicketsTecnico = $gestor->obtenerTicketsPorTecnicoFiltrados($_SESSION['id_us
     </style>
 </head>
 <body>
+    <?php require __DIR__ . '/_mensajes.php'; ?>
     <div class="cabecera">
         <h2>Panel del Técnico - Asignaciones Prioritarias</h2>
         <div>
-            <a href="perfil.php" style="background: #ffc107; color: #212529; padding: 8px 12px; text-decoration: none; border-radius: 5px; margin-right: 10px; font-weight: bold;">⚙️ Mi Perfil</a>
-            <a href="../index.php?accion=logout" class="btn-rojo">Cerrar Sesión</a>
+            <a href="index.php?accion=perfil" style="background: #ffc107; color: #212529; padding: 8px 12px; text-decoration: none; border-radius: 5px; margin-right: 10px; font-weight: bold;">⚙️ Mi Perfil</a>
+            <a href="index.php?accion=logout" class="btn-rojo">Cerrar Sesión</a>
         </div>
     </div>
 
-    <!-- CUADRO DE BÚSQUEDA PARA EL TÉCNICO -->
     <div style="background: white; padding: 20px; margin-top: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
         <h3 style="margin-top: 0;">Filtrar Mis Tickets Asignados</h3>
-        <form action="panel_tecnico.php" method="GET" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+        <form action="index.php" method="GET" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+<input type="hidden" name="accion" value="panel_tecnico">
             <div>
                 <label><strong>Solicitante:</strong></label><br>
                 <input type="text" name="usuario" value="<?php echo htmlspecialchars($usuarioFiltro); ?>" placeholder="Ej. Juan" style="padding: 6px; width: 150px;">
@@ -70,7 +55,7 @@ $misTicketsTecnico = $gestor->obtenerTicketsPorTecnicoFiltrados($_SESSION['id_us
             </div>
             <div>
                 <button type="submit" style="background: #007bff; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">🔍 Buscar</button>
-                <a href="panel_tecnico.php" style="background: #6c757d; color: white; padding: 8px 12px; text-decoration: none; border-radius: 5px; font-size: 12px; display: inline-block;">Limpiar</a>
+                <a href="index.php?accion=panel_tecnico" style="background: #6c757d; color: white; padding: 8px 12px; text-decoration: none; border-radius: 5px; font-size: 12px; display: inline-block;">Limpiar</a>
             </div>
         </form>
     </div>
@@ -97,8 +82,7 @@ $misTicketsTecnico = $gestor->obtenerTicketsPorTecnicoFiltrados($_SESSION['id_us
             <?php if (count($misTicketsTecnico) > 0): ?>
                 <?php foreach ($misTicketsTecnico as $ticket): ?>
                     <?php 
-                        $ultimoMsg = $gestor->obtenerUltimoComentario($ticket['id']);
-                        $tieneMensajeNuevo = ($ultimoMsg && $ultimoMsg['id_usuario'] != $_SESSION['id_usuario']);
+                        $tieneMensajeNuevo = ($ticket['ultimo_comentario_usuario'] !== null && (int)$ticket['ultimo_comentario_usuario'] !== $sesionIdUsuario);
                         $badgeColor = ($ticket['tipo'] === 'Incidente') ? '#dc3545' : (($ticket['tipo'] === 'Requerimiento') ? '#ffc107' : '#6c757d');
                     ?>
                     <tr>
@@ -124,7 +108,8 @@ $misTicketsTecnico = $gestor->obtenerTicketsPorTecnicoFiltrados($_SESSION['id_us
                             </span>
                         </td>
                         <td>
-                            <form action="../index.php?accion=actualizar_estado" method="POST" style="display: flex; flex-direction: column; gap: 5px;">
+                            <form action="index.php?accion=actualizar_estado" method="POST" style="display: flex; flex-direction: column; gap: 5px;">
+<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>">
                                 <input type="hidden" name="id_ticket" value="<?php echo $ticket['id']; ?>">
                                 <select name="nuevo_estado" style="padding: 5px;">
                                     <option value="Abierto" <?php echo $ticket['estado'] === 'Abierto' ? 'selected' : ''; ?>>Abierto</option>
@@ -138,7 +123,7 @@ $misTicketsTecnico = $gestor->obtenerTicketsPorTecnicoFiltrados($_SESSION['id_us
                             <?php if ($tieneMensajeNuevo): ?>
                                 <span class="alerta-nuevo">🟢 ¡Respuesta nueva!</span>
                             <?php endif; ?>
-                            <a href="ver_ticket.php?id=<?php echo $ticket['id']; ?>" class="btn-chat">💬 Abrir Chat</a>
+                            <a href="index.php?accion=ver_ticket&id=<?php echo $ticket['id']; ?>" class="btn-chat">💬 Abrir Chat</a>
                         </td>
                     </tr>
                 <?php endforeach; ?>

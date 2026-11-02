@@ -1,31 +1,26 @@
 <?php
-
-// UpperCamelCase para la clase
+/**
+ * Capa de conexión (PDO).
+ * Una sola conexión por petición (Singleton básico). Si falla, lanza la
+ * excepción: el front controller (index.php) se encarga de mostrar el error.
+ */
 class ConexionBaseDeDatos {
-    
-    // ENCAPSULAMIENTO: Propiedades privadas en lowerCamelCase
-    private string $host = "localhost";
-    private string $usuario = "root"; 
-    private string $contrasena = ""; 
-    private string $nombreBaseDeDatos = "gestion_tickets"; 
-    private ?PDO $conexion = null;
+    private const HOST     = 'localhost';
+    private const USUARIO  = 'root';
+    private const PASSWORD = '';
+    private const BASE     = 'gestion_tickets';
 
-    // lowerCamelCase para el método
-    public function obtenerConexion(): ?PDO {
-        // Solo creamos la conexión si no existe una previa (Patrón Singleton básico)
-        if ($this->conexion === null) {
-            try {
-                $dsn = "mysql:host={$this->host};dbname={$this->nombreBaseDeDatos};charset=utf8";
-                $this->conexion = new PDO($dsn, $this->usuario, $this->contrasena);
-                
-                // Le decimos a PDO que nos muestre los errores si algo falla en SQL
-                $this->conexion->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-            } catch (PDOException $error) {
-                // Si XAMPP está apagado o el nombre de la BD está mal, mostrará esto
-                echo "Error de conexión: " . $error->getMessage();
-            }
+    private static ?PDO $conexion = null;
+
+    public function obtenerConexion(): PDO {
+        if (self::$conexion === null) {
+            $dsn = 'mysql:host=' . self::HOST . ';dbname=' . self::BASE . ';charset=utf8mb4';
+            self::$conexion = new PDO($dsn, self::USUARIO, self::PASSWORD, [
+                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES   => false,
+            ]);
         }
-        return $this->conexion;
+        return self::$conexion;
     }
 }
-?>

@@ -1,116 +1,135 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-require_once __DIR__ . '/../model/GestorDeUsuarios.php';
+class UsuarioController extends BaseController {
+    private const PASSWORD_MINIMA = 6;
 
-class UsuarioController {
+    // ---------------- Gestión de usuarios (solo admin) ----------------
+    public function gestionar(): void {
+        $this->exigirRol(Usuario::ROL_ADMIN);
+        $usuarioDao = new UsuarioDAO();
 
-    public function procesarLogin(): void {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $correo = $_POST['correo'];
-            $password = $_POST['password'];
+        $usuarioAEditar = isset($_GET['editar']) ? $usuarioDao->buscarPorId((int)$_GET['editar']) : null;
 
-            $gestor = new GestorDeUsuarios();
-            $usuarioLogueado = $gestor->autenticarUsuario($correo, $password);
-
-            if ($usuarioLogueado !== null) {
-                $_SESSION['id_usuario'] = $usuarioLogueado['id_usuario'];
-                $_SESSION['nombre'] = $usuarioLogueado['nombre'];
-                $_SESSION['rol'] = $usuarioLogueado['rol'];
-                
-                if ($_SESSION['rol'] === 'admin') {
-                    header("Location: /sistema_tickets/views/panel_admin.php");
-                } elseif ($_SESSION['rol'] === 'tecnico') {
-                    // NUEVO: Redirige al panel exclusivo del técnico
-                    header("Location: /sistema_tickets/views/panel_tecnico.php");
-                } else {
-                    header("Location: /sistema_tickets/views/listar_tickets.php");
-                }
-                exit();
-            } else {
-                header("Location: /sistema_tickets/views/login.php?error=1");
-                exit();
-            }
-        }
+        $this->vista('gestion_usuarios', [
+            'usuarios'       => $usuarioDao->listarTodos(),
+            'usuarioAEditar' => $usuarioAEditar,
+        ]);
     }
 
-    public function cerrarSesion(): void {
-        session_destroy();
-        header("Location: /sistema_tickets/views/login.php");
-        exit();
-    }
-
-    // MÉTODO PARA CREAR USUARIOS
     public function registrarNuevoUsuario(): void {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $nombre = $_POST['nombre'] ?? '';
-            $correo = $_POST['correo'] ?? '';
-            $password = $_POST['password'] ?? '';
-            $rol = $_POST['rol'] ?? 'cliente';
+        $this->exigirRol(Usuario::ROL_ADMIN);
+        $this->exigirPost();
+        $this->validarCsrf();
 
-            $gestor = new GestorDeUsuarios();
-            $exito = $gestor->registrarUsuario($nombre, $correo, $password, $rol);
+        $nombre   = trim((string)($_POST['nombre'] ?? ''));
+        $correo   = trim((string)($_POST['correo'] ?? ''));
+        $password = (string)($_POST['password'] ?? '');
+        $rol      = (string)($_POST['rol'] ?? Usuario::ROL_CLIENTE);
 
-            if ($exito) {
-                header("Location: /sistema_tickets/views/gestion_usuarios.php?mensaje=creado");
-            } else {
-                header("Location: /sistema_tickets/views/gestion_usuarios.php?mensaje=error");
-            }
-            exit();
+        if (!$this->datosValidos($nombre, $correo, $rol) || mb_strlen($password) < self::PASSWORD_MINIMA) {
+            $this->redirigir('gestion_usuarios', ['mensaje' => 'datos_invalidos']);
         }
-    }
-    // Método para procesar la actualización del perfil
-    public function actualizarPerfil(): void {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $idUsuario = $_SESSION['id_usuario'];
-            $nombre = $_POST['nombre'] ?? '';
-            $correo = $_POST['correo'] ?? '';
-            $password = $_POST['password'] ?? '';
 
-            $gestor = new GestorDeUsuarios();
-            $exito = $gestor->actualizarPerfil($idUsuario, $nombre, $correo, $password);
-
-            if ($exito) {
-                // Actualizamos el nombre en la sesión si cambió
-                $_SESSION['nombre'] = $nombre;
-                header("Location: /sistema_tickets/views/perfil.php?mensaje=actualizado");
-            } else {
-                header("Location: /sistema_tickets/views/perfil.php?mensaje=error");
-            }
-            exit();
+        $usuarioDao = new UsuarioDAO();
+        if ($usuarioDao->existeCorreo($correo)) {
+            $this->redirigir('gestion_usuarios', ['mensaje' => 'correo_duplicado']);
         }
+
+        $nuevo = new Usuario(null, $nombre, $correo, $rol, password_hash($password, PASSWORD_DEFAULT));
+        $exito = $usuarioDao->guardar($nuevo);
+        $this->redirigir('gestion_usuarios', ['mensaje' => $exito ? 'creado' : 'error']);
     }
-    // MÉTODO PARA ACTUALIZAR USUARIO DESDE ADMIN
+
     public function actualizarUsuarioAdmin(): void {
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $idUsuario = $_POST['id_usuario'] ?? 0;
-            $nombre = $_POST['nombre'] ?? '';
-            $correo = $_POST['correo'] ?? '';
-            $password = $_POST['password'] ?? '';
-            $rol = $_POST['rol'] ?? 'cliente';
+        $this->exigirRol(Usuario::ROL_ADMIN);
+        $this->exigirPost();
+        $this->validarCsrf();
 
-            $gestor = new GestorDeUsuarios();
-            $exito = $gestor->actualizarUsuarioAdmin((int)$idUsuario, $nombre, $correo, $password, $rol);
+        $idUsuario = (int)($_POST['id_usuario'] ?? 0);
+        $nombre    = trim((string)($_POST['nombre'] ?? ''));
+        $correo    = trim((string)($_POST['correo'] ?? ''));
+        $password  = (string)($_POST['password'] ?? '');
+        $rol       = (string)($_POST['rol'] ?? Usuario::ROL_CLIENTE);
 
-            if ($exito) {
-                header("Location: /sistema_tickets/views/gestion_usuarios.php?mensaje=actualizado");
-            } else {
-                header("Location: /sistema_tickets/views/gestion_usuarios.php?mensaje=error");
-            }
-            exit();
+        $passwordInvalida = $password !== '' && mb_strlen($password) < self::PASSWORD_MINIMA;
+        if ($idUsuario <= 0 || !$this->datosValidos($nombre, $correo, $rol) || $passwordInvalida) {
+            $this->redirigir('gestion_usuarios', ['mensaje' => 'datos_invalidos']);
         }
+        // El admin no puede quitarse a sí mismo el rol de administrador.
+        if ($idUsuario === $this->idSesion() && $rol !== Usuario::ROL_ADMIN) {
+            $this->redirigir('gestion_usuarios', ['mensaje' => 'error_propio']);
+        }
+
+        $usuarioDao = new UsuarioDAO();
+        if ($usuarioDao->buscarPorId($idUsuario) === null) {
+            $this->redirigir('gestion_usuarios', ['mensaje' => 'error']);
+        }
+        if ($usuarioDao->existeCorreo($correo, $idUsuario)) {
+            $this->redirigir('gestion_usuarios', ['mensaje' => 'correo_duplicado']);
+        }
+
+        $hash = $password !== '' ? password_hash($password, PASSWORD_DEFAULT) : null;
+        $exito = $usuarioDao->actualizar(new Usuario($idUsuario, $nombre, $correo, $rol, $hash));
+        $this->redirigir('gestion_usuarios', ['mensaje' => $exito ? 'actualizado' : 'error']);
     }
 
-    // MÉTODO PARA ELIMINAR USUARIO
     public function eliminarUsuario(): void {
-        $idUsuario = $_GET['id'] ?? 0;
-        if ($idUsuario > 0) {
-            $gestor = new GestorDeUsuarios();
-            $gestor->eliminarUsuario((int)$idUsuario);
+        $this->exigirRol(Usuario::ROL_ADMIN);
+        $this->exigirPost();
+        $this->validarCsrf();
+
+        $idUsuario = (int)($_POST['id_usuario'] ?? 0);
+        if ($idUsuario <= 0) {
+            $this->redirigir('gestion_usuarios', ['mensaje' => 'error']);
         }
-        header("Location: /sistema_tickets/views/gestion_usuarios.php?mensaje=eliminado");
-        exit();
+        if ($idUsuario === $this->idSesion()) {
+            $this->redirigir('gestion_usuarios', ['mensaje' => 'error_propio']);
+        }
+
+        $exito = (new UsuarioDAO())->eliminar($idUsuario);
+        $this->redirigir('gestion_usuarios', ['mensaje' => $exito ? 'eliminado' : 'error']);
+    }
+
+    // ---------------- Perfil propio ----------------
+    public function perfil(): void {
+        $this->exigirSesion();
+        $usuario = (new UsuarioDAO())->buscarPorId($this->idSesion());
+        if ($usuario === null) {
+            $this->redirigir('logout');
+        }
+        $this->vista('perfil', ['usuario' => $usuario, 'volverAccion' => $this->accionInicio()]);
+    }
+
+    public function actualizarPerfil(): void {
+        $this->exigirSesion();
+        $this->exigirPost();
+        $this->validarCsrf();
+
+        $nombre   = trim((string)($_POST['nombre'] ?? ''));
+        $correo   = trim((string)($_POST['correo'] ?? ''));
+        $password = (string)($_POST['password'] ?? '');
+
+        $passwordInvalida = $password !== '' && mb_strlen($password) < self::PASSWORD_MINIMA;
+        if ($nombre === '' || !filter_var($correo, FILTER_VALIDATE_EMAIL) || $passwordInvalida) {
+            $this->redirigir('perfil', ['mensaje' => 'datos_invalidos']);
+        }
+
+        $usuarioDao = new UsuarioDAO();
+        if ($usuarioDao->existeCorreo($correo, $this->idSesion())) {
+            $this->redirigir('perfil', ['mensaje' => 'correo_duplicado']);
+        }
+
+        $hash = $password !== '' ? password_hash($password, PASSWORD_DEFAULT) : null;
+        $exito = $usuarioDao->actualizarPerfil(new Usuario($this->idSesion(), $nombre, $correo, $this->rolSesion(), $hash));
+
+        if ($exito) {
+            $_SESSION['nombre'] = $nombre;
+        }
+        $this->redirigir('perfil', ['mensaje' => $exito ? 'actualizado' : 'error']);
+    }
+
+    private function datosValidos(string $nombre, string $correo, string $rol): bool {
+        return $nombre !== ''
+            && filter_var($correo, FILTER_VALIDATE_EMAIL) !== false
+            && in_array($rol, Usuario::ROLES, true);
     }
 }
-?>

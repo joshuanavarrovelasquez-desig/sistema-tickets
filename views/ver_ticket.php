@@ -1,62 +1,9 @@
-<?php
-session_start();
-if (!isset($_SESSION['id_usuario'])) {
-    header("Location: login.php");
-    exit();
-}
-
-require_once '../model/GestorDeTickets.php';
-$idTicket = $_GET['id'] ?? null;
-
-if (!$idTicket) {
-    // Redirección inteligente según el rol si falta el ID
-    if ($_SESSION['rol'] === 'admin') {
-        header("Location: panel_admin.php");
-    } elseif ($_SESSION['rol'] === 'tecnico') {
-        header("Location: panel_tecnico.php");
-    } else {
-        header("Location: listar_tickets.php");
-    }
-    exit();
-}
-
-$gestor = new GestorDeTickets();
-$comentarios = $gestor->obtenerComentariosPorTicket($idTicket);
-
-// Obtenemos los datos del ticket de manera segura según el rol
-$ticketActual = null;
-if ($_SESSION['rol'] === 'admin' || $_SESSION['rol'] === 'tecnico') {
-    $todos = $gestor->obtenerTodosLosTickets();
-    foreach ($todos as $t) {
-        if ($t['id'] == $idTicket) {
-            $ticketActual = $t;
-            break;
-        }
-    }
-} else {
-    // Si es cliente, buscamos en su propio historial
-    $historial = $gestor->obtenerHistorialPorUsuario($_SESSION['id_usuario']);
-    foreach ($historial as $t) {
-        if ($t['id'] == $idTicket) {
-            // Re-mapeamos los datos básicos para estandarizar
-            $ticketActual = $t;
-            $ticketActual['nombre_usuario'] = $_SESSION['nombre'];
-            break;
-        }
-    }
-}
-
-if (!$ticketActual) {
-    echo "<h3 style='color:red; text-align:center; margin-top:50px;'>Ticket no encontrado o no tienes permisos para visualizarlo.</h3>";
-    echo "<div style='text-align:center;'><a href='listar_tickets.php'>Regresar al historial</a></div>";
-    exit();
-}
-?>
+<?php if (!defined('APP_INICIADA')) { http_response_code(403); exit('Acceso no permitido.'); } ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Detalle y Conversación - Ticket #<?php echo $idTicket; ?></title>
+    <title>Detalle y Conversación - Ticket #<?= (int)$idTicket ?></title>
     <style>
         body { font-family: Arial, sans-serif; margin: 30px; background-color: #f4f4f9; }
         .cabecera { background: #343a40; color: white; padding: 15px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; }
@@ -71,26 +18,20 @@ if (!$ticketActual) {
     </style>
 </head>
 <body>
+    <?php require __DIR__ . '/_mensajes.php'; ?>
     <div class="cabecera">
-        <h2>Detalle del Ticket #<?php echo $ticketActual['id']; ?> - <?php echo htmlspecialchars($ticketActual['asunto'] ?? 'Consulta'); ?></h2>
-        <a href="../index.php?accion=logout" style="background: #dc3545; color: white; padding: 8px 12px; text-decoration: none; border-radius: 5px;">Cerrar Sesión</a>
+        <h2>Detalle del Ticket #<?= (int)$ticketActual['id'] ?> - <?php echo htmlspecialchars($ticketActual['asunto'] ?? 'Consulta'); ?></h2>
+        <a href="index.php?accion=logout" style="background: #dc3545; color: white; padding: 8px 12px; text-decoration: none; border-radius: 5px;">Cerrar Sesión</a>
     </div>
 
     <div class="contenedor-chat">
-        <?php 
-        // URL de retorno exacta según el rol del usuario logueado
-        if ($_SESSION['rol'] === 'admin') {
-            $volverUrl = 'panel_admin.php';
-        } elseif ($_SESSION['rol'] === 'tecnico') {
-            $volverUrl = 'panel_tecnico.php';
-        } else {
-            $volverUrl = 'listar_tickets.php';
-        }
-        ?>
-        <a href="<?php echo $volverUrl; ?>" class="btn-volver">← Volver</a>
+        <a href="index.php?accion=<?= htmlspecialchars($volverAccion) ?>" class="btn-volver">← Volver</a>
 
         <p><strong>Clasificación:</strong> <?php echo htmlspecialchars($ticketActual['tipo']); ?> | <strong>Estado:</strong> <?php echo htmlspecialchars($ticketActual['estado']); ?></p>
         <p><strong>Descripción inicial:</strong><br><?php echo nl2br(htmlspecialchars($ticketActual['descripcion'])); ?></p>
+        <?php if (!empty($ticketActual['archivo_adjunto'])): ?>
+            <p><strong>Adjunto:</strong> <a href="uploads/<?= rawurlencode($ticketActual['archivo_adjunto']) ?>" target="_blank" rel="noopener">📎 <?= htmlspecialchars($ticketActual['archivo_adjunto']) ?></a></p>
+        <?php endif; ?>
         
         <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ccc;">
 
@@ -114,16 +55,15 @@ if (!$ticketActual) {
             <?php endif; ?>
         </div>
 
-        <!-- Formulario para enviar mensaje (Visible solo para Clientes y Técnicos) -->
-        <?php if (isset($_SESSION['rol']) && $_SESSION['rol'] !== 'admin'): ?>
-            <form action="../index.php?accion=agregar_comentario" method="POST">
-                <input type="hidden" name="id_ticket" value="<?php echo $idTicket; ?>">
+        <?php if (isset($sesionRol) && $sesionRol !== 'admin'): ?>
+            <form action="index.php?accion=agregar_comentario" method="POST">
+<input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrf) ?>">
+                <input type="hidden" name="id_ticket" value="<?= (int)$idTicket ?>">
                 <label><strong>Escribe tu respuesta o mensaje:</strong></label>
                 <textarea name="mensaje" rows="3" required placeholder="Escribe detalles, avances o preguntas sobre el ticket..."></textarea>
                 <button type="submit">Enviar Mensaje</button>
             </form>
         <?php else: ?>
-            <!-- Aviso visual para el Administrador -->
             <p style="background: #e9ecef; padding: 12px; border-radius: 4px; color: #495057; text-align: center; border: 1px dashed #ced4da; margin-top: 20px;">
                 <em>🔍 <strong>Modo de Observación (Administrador):</strong> Puedes supervisar el historial y la conversación entre el cliente y el técnico, pero no tienes permitido enviar mensajes.</em>
             </p>

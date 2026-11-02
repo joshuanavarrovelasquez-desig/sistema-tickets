@@ -1,35 +1,4 @@
-<?php
-session_start();
-if (!isset($_SESSION['id_usuario']) || $_SESSION['rol'] !== 'cliente') {
-    header("Location: login.php");
-    exit();
-}
-require_once '../model/GestorDeTickets.php';
-
-$gestor = new GestorDeTickets();
-
-// Filtros para el cliente
-$estadoFiltro = $_GET['estado'] ?? '';
-$fechaInicioFiltro = $_GET['fecha_inicio'] ?? '';
-$fechaFinFiltro = $_GET['fecha_fin'] ?? '';
-
-$misTickets = $gestor->obtenerHistorialPorUsuarioFiltrado($_SESSION['id_usuario'], $estadoFiltro, $fechaInicioFiltro, $fechaFinFiltro);
-
-// Clasificación de tickets en 3 bloques
-$ticketsEnEspera = [];
-$ticketsEnProceso = [];
-$ticketsFinalizados = [];
-
-foreach ($misTickets as $t) {
-    if ($t['estado'] === 'Finalizado') {
-        $ticketsFinalizados[] = $t;
-    } elseif ($t['estado'] === 'En proceso' || !empty($t['id_tecnico'])) {
-        $ticketsEnProceso[] = $t;
-    } else {
-        $ticketsEnEspera[] = $t;
-    }
-}
-?>
+<?php if (!defined('APP_INICIADA')) { http_response_code(403); exit('Acceso no permitido.'); } ?>
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -54,21 +23,22 @@ foreach ($misTickets as $t) {
     </style>
 </head>
 <body>
+    <?php require __DIR__ . '/_mensajes.php'; ?>
     <div class="cabecera">
         <h2>Panel de Usuario - Mis Tickets</h2>
         <div>
-            <a href="perfil.php" style="background: #ffc107; color: #212529; padding: 8px 12px; text-decoration: none; border-radius: 5px; margin-right: 10px; font-weight: bold;">⚙️ Mi Perfil</a>
-            <a href="../index.php?accion=logout" class="btn-rojo">Cerrar Sesión</a>
+            <a href="index.php?accion=perfil" style="background: #ffc107; color: #212529; padding: 8px 12px; text-decoration: none; border-radius: 5px; margin-right: 10px; font-weight: bold;">⚙️ Mi Perfil</a>
+            <a href="index.php?accion=logout" class="btn-rojo">Cerrar Sesión</a>
         </div>
     </div>
 
     <main>
-        <a href="crear_ticket.php" class="btn-crear">➕ Crear Nuevo Ticket</a>
+        <a href="index.php?accion=crear_ticket" class="btn-crear">➕ Crear Nuevo Ticket</a>
 
-        <!-- CUADRO DE BÚSQUEDA PARA EL CLIENTE -->
         <div style="background: white; padding: 20px; margin-top: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);">
             <h3 style="margin-top: 0;">Filtrar Mis Tickets</h3>
-            <form action="listar_tickets.php" method="GET" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+            <form action="index.php" method="GET" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+<input type="hidden" name="accion" value="listar_tickets">
                 <div>
                     <label><strong>Estado:</strong></label><br>
                     <select name="estado" style="padding: 6px; width: 140px;">
@@ -88,12 +58,11 @@ foreach ($misTickets as $t) {
                 </div>
                 <div>
                     <button type="submit" style="background: #007bff; color: white; padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">🔍 Buscar</button>
-                    <a href="listar_tickets.php" style="background: #6c757d; color: white; padding: 8px 12px; text-decoration: none; border-radius: 5px; font-size: 12px; display: inline-block;">Limpiar</a>
+                    <a href="index.php?accion=listar_tickets" style="background: #6c757d; color: white; padding: 8px 12px; text-decoration: none; border-radius: 5px; font-size: 12px; display: inline-block;">Limpiar</a>
                 </div>
             </form>
         </div>
 
-        <!-- BLOQUE 1: TICKETS EN ATENCIÓN / EN PROCESO -->
         <h3 class="seccion-titulo">🎧 1. Tickets en Atención (En Proceso)</h3>
         <table>
             <thead>
@@ -110,8 +79,7 @@ foreach ($misTickets as $t) {
                 <?php if (count($ticketsEnProceso) > 0): ?>
                     <?php foreach ($ticketsEnProceso as $ticket): ?>
                         <?php 
-                            $ultimoMsg = $gestor->obtenerUltimoComentario($ticket['id']);
-                            $tieneMensajeNuevo = ($ultimoMsg && $ultimoMsg['id_usuario'] != $_SESSION['id_usuario']);
+                            $tieneMensajeNuevo = ($ticket['ultimo_comentario_usuario'] !== null && (int)$ticket['ultimo_comentario_usuario'] !== $sesionIdUsuario);
                         ?>
                         <tr>
                             <td>#<?php echo htmlspecialchars($ticket['id']); ?></td>
@@ -130,7 +98,7 @@ foreach ($misTickets as $t) {
                                 <?php if ($tieneMensajeNuevo): ?>
                                     <span class="alerta-nuevo">🟢 ¡Respuesta nueva!</span>
                                 <?php endif; ?>
-                                <a href='ver_ticket.php?id=<?php echo $ticket['id']; ?>' class='btn-chat'>💬 Abrir Chat</a>
+                                <a href='index.php?accion=ver_ticket&id=<?php echo $ticket['id']; ?>' class='btn-chat'>💬 Abrir Chat</a>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -140,7 +108,6 @@ foreach ($misTickets as $t) {
             </tbody>
         </table>
 
-        <!-- BLOQUE 2: TICKETS PENDIENTES / EN ESPERA DE ASIGNACIÓN -->
         <h3 class="seccion-titulo seccion-espera">⏳ 2. Tickets en Espera de Asignación</h3>
         <table>
             <thead>
@@ -166,7 +133,7 @@ foreach ($misTickets as $t) {
                             <td><?php echo nl2br(htmlspecialchars($ticket['descripcion'])); ?></td>
                             <td><span style='color: #6c757d; font-weight: bold;'><?php echo htmlspecialchars($ticket['estado']); ?></span></td>
                             <td style='text-align: center;'>
-                                <a href='ver_ticket.php?id=<?php echo $ticket['id']; ?>' class='btn-chat' style='background: #6c757d;'>📄 Ver Detalle</a>
+                                <a href='index.php?accion=ver_ticket&id=<?php echo $ticket['id']; ?>' class='btn-chat' style='background: #6c757d;'>📄 Ver Detalle</a>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -176,7 +143,6 @@ foreach ($misTickets as $t) {
             </tbody>
         </table>
 
-        <!-- BLOQUE 3: TICKETS FINALIZADOS -->
         <h3 class="seccion-titulo seccion-finalizados">✅ 3. Historial de Tickets Finalizados</h3>
         <table>
             <thead>
@@ -204,7 +170,7 @@ foreach ($misTickets as $t) {
                             </td>
                             <td><span style='color: green; font-weight: bold;'><?php echo htmlspecialchars($ticket['estado']); ?></span></td>
                             <td style='text-align: center;'>
-                                <a href='ver_ticket.php?id=<?php echo $ticket['id']; ?>' class='btn-chat' style='background: #28a745;'>📜 Ver Historial / Chat</a>
+                                <a href='index.php?accion=ver_ticket&id=<?php echo $ticket['id']; ?>' class='btn-chat' style='background: #28a745;'>📜 Ver Historial / Chat</a>
                             </td>
                         </tr>
                     <?php endforeach; ?>
