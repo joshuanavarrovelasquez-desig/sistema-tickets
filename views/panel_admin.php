@@ -24,6 +24,7 @@
     <div class="cabecera">
         <h2>Panel de Control - Administrador (ITIL)</h2>
         <div>
+            <a href="index.php?accion=dashboard" style="background: #28a745; color: white; padding: 8px 12px; text-decoration: none; border-radius: 5px; margin-right: 10px;">📊 Dashboard</a>
             <a href="index.php?accion=gestion_usuarios" style="background: #17a2b8; color: white; padding: 8px 12px; text-decoration: none; border-radius: 5px; margin-right: 10px;">👥 Gestionar Usuarios</a>
             <a href="index.php?accion=perfil" style="background: #ffc107; color: #212529; padding: 8px 12px; text-decoration: none; border-radius: 5px; margin-right: 10px; font-weight: bold;">⚙️ Mi Perfil</a>
             <a href="index.php?accion=logout" class="btn-rojo">Cerrar Sesión</a>

@@ -17,6 +17,26 @@ class TicketController extends BaseController {
             'fechaFinFiltro'    => $filtros['fecha_fin'],
         ]);
     }
+    
+        public function dashboard(): void {
+        $this->exigirRol(Usuario::ROL_ADMIN);
+        $ticketDao = new TicketDAO();
+
+        $porEstado = $ticketDao->contarPorEstado();
+        $porTipo   = $ticketDao->contarPorTipo();
+
+        $this->vista('dashboard', [
+            'porEstado'        => $porEstado,
+            'porTipo'          => $porTipo,
+            'porTecnico'       => $ticketDao->contarPorTecnico(),
+            'criticos'         => $ticketDao->contarCriticosAbiertos(),
+            'totalTickets'     => array_sum($porEstado),
+            'porClasificar'    => $porTipo['Por Clasificar'] ?? 0,
+            'abiertos'         => $porEstado['Abierto'] ?? 0,
+            'enProceso'        => $porEstado['En proceso'] ?? 0,
+            'finalizados'      => $porEstado['Finalizado'] ?? 0,
+        ]);
+    }
 
     public function panelTecnico(): void {
         $this->exigirRol(Usuario::ROL_TECNICO);

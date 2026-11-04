@@ -84,6 +84,41 @@ class TicketDAO extends BaseDAO {
             [$idTicket, $idUsuario, $mensaje]
         );
     }
+        // ---------- Estadísticas del dashboard ----------
+
+    /** @return array<string,int> ej. ['Abierto' => 4, 'Finalizado' => 2] */
+    public function contarPorEstado(): array {
+        return $this->contarAgrupado("SELECT estado AS etiqueta, COUNT(*) AS total FROM tickets GROUP BY estado");
+    }
+
+    public function contarPorTipo(): array {
+        return $this->contarAgrupado("SELECT tipo AS etiqueta, COUNT(*) AS total FROM tickets GROUP BY tipo");
+    }
+
+    public function contarPorTecnico(): array {
+        return $this->contarAgrupado(
+            "SELECT COALESCE(u.nombre, 'Sin asignar') AS etiqueta, COUNT(*) AS total
+             FROM tickets t LEFT JOIN usuarios u ON t.id_tecnico = u.id_usuario
+             WHERE t.estado <> 'Finalizado'
+             GROUP BY etiqueta ORDER BY total DESC"
+        );
+    }
+
+    public function contarCriticosAbiertos(): int {
+        $filas = $this->consultar(
+            "SELECT COUNT(*) AS total FROM tickets
+             WHERE tiempo_resolucion LIKE '2 horas%' AND estado <> 'Finalizado'"
+        );
+        return (int)$filas[0]['total'];
+    }
+
+    private function contarAgrupado(string $sql): array {
+        $resultado = [];
+        foreach ($this->consultar($sql) as $fila) {
+            $resultado[$fila['etiqueta']] = (int)$fila['total'];
+        }
+        return $resultado;
+    }
 
     /** Arma las condiciones opcionales (usuario, estado, fechas) con parámetros preparados. */
     private function condicionesFiltro(array $filtros, array &$parametros): string {

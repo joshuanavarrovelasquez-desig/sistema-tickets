@@ -26,6 +26,7 @@ $rutas = [
     'logout'             => ['AuthController', 'cerrarSesion'],
     // Tickets
     'panel_admin'        => ['TicketController', 'panelAdmin'],
+    'dashboard'          => ['TicketController', 'dashboard'],
     'panel_tecnico'      => ['TicketController', 'panelTecnico'],
     'listar_tickets'     => ['TicketController', 'listarMisTickets'],
     'crear_ticket'       => ['TicketController', 'formularioCrear'],
