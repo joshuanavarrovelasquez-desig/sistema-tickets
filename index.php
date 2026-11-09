@@ -6,10 +6,11 @@
 session_set_cookie_params(['httponly' => true, 'samesite' => 'Lax']);
 session_start();
 define('APP_INICIADA', true);
+date_default_timezone_set('America/Lima');
 
 // Carga automática de clases (controller, model, dao, config)
 spl_autoload_register(function (string $clase): void {
-    foreach (['controller', 'model', 'dao', 'config'] as $carpeta) {
+foreach (['controller', 'model', 'dao', 'config', 'service'] as $carpeta) {
         $archivo = __DIR__ . "/$carpeta/$clase.php";
         if (is_file($archivo)) {
             require_once $archivo;

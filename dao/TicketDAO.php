@@ -57,10 +57,10 @@ class TicketDAO extends BaseDAO {
         return $this->ejecutar("UPDATE tickets SET estado = ? WHERE id = ?", [$estado, $idTicket]);
     }
 
-    public function actualizarClasificacion(int $idTicket, string $estado, string $tipo, string $tiempoResolucion): bool {
+    public function actualizarClasificacion(int $idTicket, string $estado, string $tipo, string $tiempoResolucion, ?string $fechaLimite): bool {
         return $this->ejecutar(
-            "UPDATE tickets SET estado = ?, tipo = ?, tiempo_resolucion = ? WHERE id = ?",
-            [$estado, $tipo, $tiempoResolucion, $idTicket]
+            "UPDATE tickets SET estado = ?, tipo = ?, tiempo_resolucion = ?, fecha_limite = ? WHERE id = ?",
+            [$estado, $tipo, $tiempoResolucion, $fechaLimite, $idTicket]
         );
     }
 

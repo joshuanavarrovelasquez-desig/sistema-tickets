@@ -162,8 +162,14 @@ class TicketController extends BaseController {
                 $nuevoTipo, (int)$ticket['id_usuario'], $ticket['correo'], $ticket['asunto'],
                 $ticket['descripcion'], $ticket['codigo_barras'], $ticket['archivo_adjunto']
             );
+            // Fecha límite real: se cuenta desde que se creó el ticket y salta fines de semana y feriados.
+            $desde    = new DateTimeImmutable($ticket['fecha_registro']);
+            $feriados = (new ServicioFeriados('PE'))->feriadosDesde($desde);
+            $limite   = $entidad->calcularFechaLimite($desde, $feriados);
+
             $exito = $ticketDao->actualizarClasificacion(
-                $idTicket, $nuevoEstado, $entidad->getTipo(), $entidad->calcularTiempoResolucion()
+                $idTicket, $nuevoEstado, $entidad->getTipo(), $entidad->calcularTiempoResolucion(),
+                $limite ? $limite->format('Y-m-d H:i:s') : null
             );
         } else {
             // El técnico solo puede cambiar el estado de los tickets que tiene asignados.

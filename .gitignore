@@ -1,0 +1,7 @@
+vendor/
+uploads/*
+!uploads/.htaccess
+config/config.local.php
+composer.phar
+cache/*
+!cache/.htaccess

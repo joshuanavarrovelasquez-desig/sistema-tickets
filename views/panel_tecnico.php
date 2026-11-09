@@ -101,6 +101,7 @@
                         </td>
                         <td>
                             <span style="color: #d9534f; font-weight: bold;">⏳ <?php echo htmlspecialchars($ticket['tiempo_resolucion']); ?></span>
+                            <?php require_once __DIR__ . '/_vencimiento.php'; echo etiquetaVencimiento($ticket); ?>
                         </td>
                         <td>
                             <span style="font-weight: bold; color: <?php echo $ticket['estado'] === 'Finalizado' ? 'green' : 'orange'; ?>;">

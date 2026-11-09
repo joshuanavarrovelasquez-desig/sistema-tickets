@@ -114,6 +114,7 @@
                         <td>
                             <span style="color: <?= $colorEstado ?>; font-weight: bold;"><?= htmlspecialchars($ticket['estado']) ?></span><br>
                             <small>SLA: <?= htmlspecialchars($slaDisplay) ?></small>
+                            <?php require_once __DIR__ . '/_vencimiento.php'; echo etiquetaVencimiento($ticket); ?>
                         </td>
                         <td>
                             <form action="index.php?accion=asignar_tecnico" method="POST" style="display: flex; flex-direction: column; gap: 5px;">

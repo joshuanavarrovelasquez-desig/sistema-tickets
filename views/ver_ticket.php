@@ -29,6 +29,10 @@
 
         <p><strong>Clasificación:</strong> <?php echo htmlspecialchars($ticketActual['tipo']); ?> | <strong>Estado:</strong> <?php echo htmlspecialchars($ticketActual['estado']); ?></p>
         <p><strong>Descripción inicial:</strong><br><?php echo nl2br(htmlspecialchars($ticketActual['descripcion'])); ?></p>
+        <?php if (!empty($ticketActual['fecha_limite'])): ?>
+            <?php require_once __DIR__ . '/_vencimiento.php'; ?>
+            <p><strong>Plazo de resolución:</strong><?php echo etiquetaVencimiento($ticketActual); ?></p>
+        <?php endif; ?>
         <?php if (!empty($ticketActual['archivo_adjunto'])): ?>
             <p><strong>Adjunto:</strong> <a href="uploads/<?= rawurlencode($ticketActual['archivo_adjunto']) ?>" target="_blank" rel="noopener">📎 <?= htmlspecialchars($ticketActual['archivo_adjunto']) ?></a></p>
         <?php endif; ?>

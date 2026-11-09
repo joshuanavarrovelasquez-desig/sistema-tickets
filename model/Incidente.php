@@ -28,4 +28,11 @@ class Incidente extends Ticket {
             ? '2 horas (SLA Crítico)'
             : '24 horas (SLA Normal)';
     }
+
+    /** Incidentes: horas corridas contadas desde que se creó el ticket. */
+    public function calcularFechaLimite(DateTimeImmutable $desde, array $feriados): ?DateTimeImmutable {
+        return strcasecmp($this->urgencia, 'Alta') === 0
+            ? $desde->modify('+2 hours')
+            : $desde->modify('+24 hours');
+    }
 }

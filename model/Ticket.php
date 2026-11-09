@@ -25,4 +25,9 @@ abstract class Ticket {
 
     abstract public function getTipo(): string;
     abstract public function calcularTiempoResolucion(): string;
+
+    /** Fecha límite real del SLA. null = todavía no aplica (ticket sin clasificar). */
+    public function calcularFechaLimite(DateTimeImmutable $desde, array $feriados): ?DateTimeImmutable {
+        return null;
+    }
 }

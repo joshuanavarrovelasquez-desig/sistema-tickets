@@ -10,10 +10,15 @@ class Requerimiento extends Ticket {
 
     public function getTipo(): string { return 'Requerimiento'; }
 
-
     public function calcularTiempoResolucion(): string {
         return $this->requiereAprobacion
             ? '5 días hábiles (Requiere visto bueno de gerencia)'
             : '3 días hábiles';
+    }
+
+    /** Requerimientos: días hábiles (sin fines de semana ni feriados); vence a las 18:00. */
+    public function calcularFechaLimite(DateTimeImmutable $desde, array $feriados): ?DateTimeImmutable {
+        $dias = $this->requiereAprobacion ? 5 : 3;
+        return CalendarioLaboral::sumarDiasHabiles($desde, $dias, $feriados);
     }
 }
