@@ -9,7 +9,7 @@ define('APP_INICIADA', true);
 
 // Carga automática de clases (controller, model, dao, config)
 spl_autoload_register(function (string $clase): void {
-    foreach (['controller', 'model', 'dao', 'config'] as $carpeta) {
+    foreach (['controller', 'model', 'dao', 'config', 'service'] as $carpeta) {
         $archivo = __DIR__ . "/$carpeta/$clase.php";
         if (is_file($archivo)) {
             require_once $archivo;
