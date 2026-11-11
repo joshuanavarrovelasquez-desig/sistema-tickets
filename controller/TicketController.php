@@ -133,6 +133,7 @@ class TicketController extends BaseController {
         $exito = (new TicketDAO())->guardar($ticket);
 
         if ($exito) {
+            (new ServicioNotificaciones())->ticketCreado($ticket);
             $this->redirigir($this->accionInicio(), ['mensaje' => 'exito']);
         }
         $this->redirigir('crear_ticket', ['mensaje' => 'error']);
@@ -178,6 +179,9 @@ class TicketController extends BaseController {
             }
             $exito = $ticketDao->actualizarEstado($idTicket, $nuevoEstado);
         }
+        if ($exito && $ticket['estado'] !== $nuevoEstado) {
+            (new ServicioNotificaciones())->estadoCambiado($ticket, $nuevoEstado);
+        }
 
         $this->redirigir($this->accionInicio(), ['mensaje' => $exito ? 'actualizado' : 'error']);
     }
@@ -202,6 +206,9 @@ class TicketController extends BaseController {
         }
 
         $exito = $ticketDao->asignarTecnico($idTicket, $idTecnico);
+        if ($exito && $idTecnico !== null) {
+            (new ServicioNotificaciones())->tecnicoAsignado($ticketDao->buscarPorId($idTicket), $tecnico);
+        }
         $this->redirigir('panel_admin', ['mensaje' => $exito ? 'asignado' : 'error']);
     }
 
@@ -223,8 +230,8 @@ class TicketController extends BaseController {
         }
 
         $mensaje = mb_substr(trim((string)($_POST['mensaje'] ?? '')), 0, 2000);
-        if ($mensaje !== '') {
-            $ticketDao->agregarComentario($idTicket, $this->idSesion(), $mensaje);
+        if ($mensaje !== '' && $ticketDao->agregarComentario($idTicket, $this->idSesion(), $mensaje)) {
+            (new ServicioNotificaciones())->comentarioNuevo($ticket, $mensaje, $this->rolSesion());
         }
         $this->redirigir('ver_ticket', ['id' => $idTicket]);
     }
